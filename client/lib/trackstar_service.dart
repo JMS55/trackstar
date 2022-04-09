@@ -9,7 +9,7 @@ class TrackStarService {
     responses = ws.stream.asBroadcastStream();
   }
 
-  final ws = WebSocketChannel.connect(Uri.parse('ws://localhost:8080'));
+  final ws = WebSocketChannel.connect(Uri.parse('ws://104.248.230.123:8080'));
   late Stream<dynamic> responses;
 
   late String userName;
