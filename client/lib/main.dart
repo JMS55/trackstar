@@ -30,8 +30,8 @@ class _AppState extends State<App> {
   }
 
   @override
-  void dispose() {
-    trackStarService.shutdown();
+  Future<void> dispose() async {
+    await trackStarService.shutdown();
     super.dispose();
   }
 }

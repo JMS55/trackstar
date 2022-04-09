@@ -44,7 +44,8 @@ class TrackStarService {
 
   Future<void> leaveRoom() async {
     ws.sink.add(jsonEncode(LeaveRoomRequest(roomId!, playerId).toJson()));
-    LeaveRoomResponse response = await responseStream<LeaveRoomResponse>().first;
+    LeaveRoomResponse response =
+        await responseStream<LeaveRoomResponse>().first;
     if (response.status != 'success') {
       throw Error();
     }
@@ -63,7 +64,7 @@ class TrackStarService {
   }
 
   Future<void> shutdown() async {
-    if(roomId != null){
+    if (roomId != null) {
       await leaveRoom();
     }
 
@@ -108,7 +109,7 @@ class JoinRoomResponse extends Response {
 
   JoinRoomResponse(this.status, this.playerId);
   factory JoinRoomResponse.fromJson(Map<String, dynamic> json) =>
-    _$JoinRoomResponseFromJson(json);
+      _$JoinRoomResponseFromJson(json);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
