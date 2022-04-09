@@ -1,7 +1,7 @@
 const WebSocketServer = require('ws');
 const util = require('util')
 
-const debug = true;
+const DEBUG = true;
 const MAX_PLAYER_ID = 99999999;
 const MAX_ROOM_ID = 99999999;
 
@@ -24,15 +24,20 @@ class Room {
 }
 
 const rooms = new Map();
+const clients = new Map();
 
 const wss = new WebSocketServer.Server({ port: 8080 })
 wss.on("connection", ws => {
+    DEBUG && console.log('New client connected');
     ws.on("message", data => {
         const message = JSON.parse(data);
+        DEBUG && console.log('Message received from client:');
+        DEBUG && console.log(message);
         switch (message.topic) {
             case 'create_room':
                 room = new Room(message.creator_name);
                 rooms.set(room.id, room);
+                clients.set(room.creator_id, ws);
                 ws.send(JSON.stringify({
                     topic: 'create_room_response',
                     status: 'success',
@@ -41,27 +46,45 @@ wss.on("connection", ws => {
                 }));
                 break;
             case 'join_room':
-                player = new Player(message.player_name);
-                console.log(message.room_id)
-                rooms.get(message.room_id).players.set(player.id, player);
+                joining_player = new Player(message.player_name);
+                room = rooms.get(message.room_id);
+                room.players.set(joining_player.id, joining_player);
+                clients.set(joining_player.id, ws);
                 ws.send(JSON.stringify({
                     topic: 'join_room_response',
                     status: 'success',
-                    player_id: player.id
+                    player_id: joining_player.id
                 }));
+                room.players.forEach((player, player_id) => {
+                    client = clients.get(player_id);
+                    client.send(JSON.stringify({
+                        topic: 'player_joined',
+                        room_id: room.id,
+                        player_id: player.id,
+                        player_name: player.name
+                    }));
+                })
                 break;
             case 'leave_room':
                 rooms.get(message.room_id).players.delete(message.player_id);
+                clients.delete(message.player_id);
                 ws.send(JSON.stringify({
                     topic: 'leave_room_response',
                     status: 'success'
                 }));
+                room.players.forEach((player, player_id) => {
+                    client = clients.get(player_id);
+                    client.send(JSON.stringify({
+                        topic: 'player_left',
+                        room_id: room.id,
+                        player_id: player.id
+                    }));
+                })
                 break;
             default:
-                console.log('Invalid topic');
+                console.log('Invalid topic: ' + message.topic);
         }
-        if (debug) {
-            console.log(util.inspect(rooms, false, null, true));
-        }
+        DEBUG && console.log('Current rooms list:\n' + util.inspect(rooms, false, null, true));
+        DEBUG && console.log('Current clients list: ' + Array.from(clients.keys()));
     });
 });
