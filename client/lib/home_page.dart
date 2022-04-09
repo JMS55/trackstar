@@ -27,6 +27,7 @@ class HomePage extends StatelessWidget {
                       MaterialPageRoute(
                           builder: (context) => EnterNamePage(
                                 trackStarService: trackStarService,
+                                isCreatingRoom: true,
                               )),
                     );
                   },
@@ -37,7 +38,9 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const EnterCodePage()),
+                          builder: (context) => EnterCodePage(
+                                trackStarService: trackStarService,
+                              )),
                     );
                   },
                 ),

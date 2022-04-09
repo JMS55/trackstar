@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
 class LobbyPage extends StatefulWidget {
-  const LobbyPage(
-      {Key? key, required this.roomCode, required this.isRoomCreator})
-      : super(key: key);
+  const LobbyPage({Key? key, required this.isRoomCreator}) : super(key: key);
 
-  final int roomCode;
   final bool isRoomCreator;
 
   @override
