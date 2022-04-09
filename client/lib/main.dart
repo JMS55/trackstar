@@ -14,7 +14,7 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  final TrackStarService trackStarService = TrackStarService();
+  final trackStarService = TrackStarService();
 
   @override
   Widget build(BuildContext context) {

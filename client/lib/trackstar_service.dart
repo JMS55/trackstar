@@ -9,8 +9,7 @@ class TrackStarService {
     responses = ws.stream.asBroadcastStream();
   }
 
-  final WebSocketChannel ws =
-      WebSocketChannel.connect(Uri.parse('ws://localhost:8080'));
+  final ws = WebSocketChannel.connect(Uri.parse('ws://localhost:8080'));
   late Stream<dynamic> responses;
 
   late String userName;
@@ -22,12 +21,14 @@ class TrackStarService {
         .cast<T>();
   }
 
-  Future<void> createRoom() async {
+  Future<CreateRoomResponse> createRoom() async {
     ws.sink.add(jsonEncode(CreateRoomRequest(userName).toJson()));
     CreateRoomResponse response =
         await responseStream<CreateRoomResponse>().first;
     if (response.status != 'success') {
       throw Error();
+    } else {
+      return response;
     }
   }
 
@@ -48,8 +49,8 @@ class CreateRoomRequest {
 @JsonSerializable(fieldRename: FieldRename.snake)
 class CreateRoomResponse extends Response {
   final String status;
-  final String roomId;
-  final String creatorId;
+  final int roomId;
+  final int creatorId;
 
   CreateRoomResponse(this.status, this.roomId, this.creatorId);
   factory CreateRoomResponse.fromJson(Map<String, dynamic> json) =>
