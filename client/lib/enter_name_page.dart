@@ -42,14 +42,16 @@ class EnterNamePage extends StatelessWidget {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const LobbyPage(
+                        builder: (context) => LobbyPage(
+                              trackStarService: trackStarService,
                               isRoomCreator: true,
                             )));
               } else {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const LobbyPage(
+                        builder: (context) => LobbyPage(
+                              trackStarService: trackStarService,
                               isRoomCreator: false,
                             )));
               }
