@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:trackstar/home_page.dart';
+import 'home_page.dart';
+import 'trackstar_service.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class App extends StatefulWidget {
+  const App({Key? key}) : super(key: key);
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  final TrackStarService trackStarService = TrackStarService();
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +23,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const HomePage(),
+      home: HomePage(
+        trackStarService: trackStarService,
+      ),
     );
+  }
+
+  @override
+  void dispose() {
+    trackStarService.shutdown();
+    super.dispose();
   }
 }
