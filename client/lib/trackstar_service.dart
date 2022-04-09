@@ -53,14 +53,16 @@ class TrackStarService {
 
   Future<void> startGame() async {
     ws.sink.add(jsonEncode(StartGameRequest(roomId!).toJson()));
-    StartGameResponse response = await responseStream<StartGameResponse>().first;
+    StartGameResponse response =
+        await responseStream<StartGameResponse>().first;
     if (response.status != 'success') {
       throw Error();
     }
   }
 
   Future<void> makeGuess(String guess) async {
-    ws.sink.add(jsonEncode(MakeGuessRequest(roomId!, playerId, guess).toJson()));
+    ws.sink
+        .add(jsonEncode(MakeGuessRequest(roomId!, playerId, guess).toJson()));
   }
 
   Future<void> shutdown() async {
@@ -190,6 +192,30 @@ class CorrectGuessMade extends Response {
       _$CorrectGuessMadeFromJson(json);
 }
 
+@JsonSerializable(fieldRename: FieldRename.snake)
+class RoundOver extends Response {
+  RoundOver();
+  factory RoundOver.fromJson(Map<String, dynamic> json) =>
+      _$RoundOverFromJson(json);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class PlayerJoined extends Response {
+  final String playerName;
+  final int roomId, playerId;
+  PlayerJoined(this.roomId, this.playerId, this.playerName);
+  factory PlayerJoined.fromJson(Map<String, dynamic> json) =>
+      _$PlayerJoinedFromJson(json);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class PlayerLeft extends Response {
+  final int roomId, playerId;
+  PlayerLeft(this.roomId, this.playerId);
+  factory PlayerLeft.fromJson(Map<String, dynamic> json) =>
+      _$PlayerLeftFromJson(json);
+}
+
 abstract class Response {
   Response();
   factory Response.fromJson(Map<String, dynamic> json) {
@@ -210,6 +236,12 @@ abstract class Response {
         return TrackEnded.fromJson(json);
       case 'correct_guess_made':
         return CorrectGuessMade.fromJson(json);
+      case 'round_over':
+        return RoundOver();
+      case 'player_joined':
+        return PlayerJoined.fromJson(json);
+      case 'player_left':
+        return PlayerLeft.fromJson(json);
       default:
         throw ArgumentError('Unknown type');
     }
