@@ -14,6 +14,8 @@ class TrackStarService {
   late Stream<dynamic> responses;
 
   late String userName;
+  int? roomId;
+  late int playerId;
 
   Stream<T> responseStream<T extends Response>() {
     return responses
@@ -31,7 +33,27 @@ class TrackStarService {
     }
   }
 
-  void shutdown() {
+  Future<void> joinRoom() async {
+    ws.sink.add(jsonEncode(JoinRoomRequest(roomId!, userName).toJson()));
+    JoinRoomResponse response = await responseStream<JoinRoomResponse>().first;
+    if (response.status != 'success') {
+      throw Error();
+    }
+  }
+
+  Future<void> leaveRoom() async {
+    ws.sink.add(jsonEncode(LeaveRoomRequest(roomId!, playerId).toJson()));
+    LeaveRoomResponse response = await responseStream<LeaveRoomResponse>().first;
+    if (response.status != 'success') {
+      throw Error();
+    }
+  }
+
+  Future<void> shutdown() async {
+    if(roomId != null){
+      await leaveRoom();
+    }
+
     ws.sink.close();
   }
 }
@@ -56,12 +78,54 @@ class CreateRoomResponse extends Response {
       _$CreateRoomResponseFromJson(json);
 }
 
+@JsonSerializable(fieldRename: FieldRename.snake)
+class JoinRoomRequest {
+  final String topic = 'join_room';
+  int roomId;
+  String playerName;
+
+  JoinRoomRequest(this.roomId, this.playerName);
+  Map<String, dynamic> toJson() => _$JoinRoomRequestToJson(this);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class JoinRoomResponse extends Response {
+  final String status;
+  int playerId;
+
+  JoinRoomResponse(this.status, this.playerId);
+  factory JoinRoomResponse.fromJson(Map<String, dynamic> json) =>
+    _$JoinRoomResponseFromJson(json);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class LeaveRoomRequest {
+  final String topic = 'leave_room';
+  int roomId, playerId;
+
+  LeaveRoomRequest(this.roomId, this.playerId);
+  Map<String, dynamic> toJson() => _$LeaveRoomRequestToJson(this);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class LeaveRoomResponse extends Response {
+  final String status;
+
+  LeaveRoomResponse(this.status);
+  factory LeaveRoomResponse.fromJson(Map<String, dynamic> json) =>
+      _$LeaveRoomResponseFromJson(json);
+}
+
 abstract class Response {
   Response();
   factory Response.fromJson(Map<String, dynamic> json) {
     switch (json['topic']) {
       case 'create_room_response':
         return CreateRoomResponse.fromJson(json);
+      case 'join_room_response':
+        return JoinRoomResponse.fromJson(json);
+      case 'leave_room_response':
+        return LeaveRoomResponse.fromJson(json);
       default:
         throw ArgumentError('Unknown type');
     }
