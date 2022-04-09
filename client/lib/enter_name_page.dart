@@ -13,9 +13,13 @@ class EnterNamePage extends StatelessWidget {
             padding: const EdgeInsets.all(36.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const <Widget>[
-                Text('Your Name:'),
-                TextField(),
+              children: <Widget>[
+                TextFormField(
+                  decoration: const InputDecoration(
+                    border: UnderlineInputBorder(),
+                    labelText: 'Enter Your Name',
+                  ),
+                ),
               ],
             ),
           ),
