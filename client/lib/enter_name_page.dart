@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'trackstar_service.dart';
 
 class EnterNamePage extends StatelessWidget {
-  const EnterNamePage({Key? key}) : super(key: key);
+  const EnterNamePage({Key? key, required this.trackStarService})
+      : super(key: key);
+
+  final TrackStarService trackStarService;
 
   @override
   Widget build(BuildContext context) {
