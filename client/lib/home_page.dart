@@ -20,7 +20,7 @@ class HomePage extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const EnterNamePage()),
+                    MaterialPageRoute(builder: (context) => EnterNamePage()),
                   );},
                   child: Text('Create Room'),
                 ),

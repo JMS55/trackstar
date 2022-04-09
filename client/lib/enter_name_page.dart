@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class EnterNamePage extends StatelessWidget {
-  const EnterNamePage({Key? key}) : super(key: key);
-
+  EnterNamePage({Key? key}) : super(key: key);
+  final TextEditingController nameController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -14,12 +14,15 @@ class EnterNamePage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                TextFormField(
+                TextField(
+                  controller: nameController,
+                  textAlign: TextAlign.left,
                   decoration: const InputDecoration(
-                    border: UnderlineInputBorder(),
-                    labelText: 'Enter Your Name',
+                    border: InputBorder.none,
+                    hintText: 'Enter Your Name',
+                    hintStyle: TextStyle(color: Colors.grey),
                   ),
-                ),
+                )
               ],
             ),
           ),
