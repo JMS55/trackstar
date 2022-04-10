@@ -51,7 +51,7 @@ class GamePage extends StatelessWidget {
     Widget playersList = Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => ListView(
               children: trackStarService.players.values
-                  .map((player) => Text('$player.userName: $player.score'))
+                  .map((player) => Text('${player.userName}: ${player.score}'))
                   .toList(),
               shrinkWrap: true,
             ));

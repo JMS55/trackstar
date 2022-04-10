@@ -46,6 +46,10 @@ function sendEachClientInRoomAux(room_id, make_json) {
 }
 
 function playTrack(room_id) {
+    if (!rooms.has(room_id)) {
+        return;
+    }
+
     room = rooms.get(room_id);
     room.state = 'track_playing';
     room.current_track = spotify.getRandomUnplayedTrack(room.played_track_urls);
@@ -61,6 +65,10 @@ function playTrack(room_id) {
 }
 
 function revealTrackAndWait(room_id) {
+    if (!rooms.has(room_id)) {
+        return;
+    }
+
     rooms.get(room_id).state = 'waiting'
     sendEachClientInRoom(room_id, {
         topic: 'track_ended',
@@ -72,6 +80,10 @@ function revealTrackAndWait(room_id) {
 }
 
 function endRound(room_id) {
+    if (!rooms.has(room_id)) {
+        return;
+    }
+
     rooms.get(room_id).state = 'round_over'
     sendEachClientInRoom(room_id, {
         topic: 'round_over'
