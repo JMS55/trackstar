@@ -87,7 +87,7 @@ wss.on("connection", ws => {
         DEBUG && console.log(message);
         switch (message.topic) {
             case 'create_room':
-                const room = new Room(message.creator_name);
+                var room = new Room(message.creator_name);
                 rooms.set(room.id, room);
                 clients.set(room.creator_id, ws);
                 ws.send(JSON.stringify({
@@ -114,7 +114,7 @@ wss.on("connection", ws => {
                 }));
                 break;
             case 'leave_room':
-                const room = rooms.get(message.room_id);
+                var room = rooms.get(message.room_id);
                 room.players.delete(message.player_id);
                 clients.delete(message.player_id);
                 ws.send(JSON.stringify({
