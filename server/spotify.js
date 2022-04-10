@@ -66,7 +66,7 @@ function closeEnough(s1, s2) {
 }
 
 function getRandomTrack() {
-    return tracks[Math.floor(Math.random() * items.length)];
+    return tracks[Math.floor(Math.random() * tracks.length)];
 }
 
 function getRandomUnplayedTrack(played_track_urls) {
