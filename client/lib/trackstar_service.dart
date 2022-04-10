@@ -6,6 +6,12 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 part 'trackstar_service.g.dart';
 
+class Player {
+  String userName;
+  int score = 0;
+  Player(this.userName);
+}
+
 class TrackStarService extends ChangeNotifier {
   final ws = WebSocketChannel.connect(Uri.parse('ws://104.248.230.123:8080'));
   late Stream<dynamic> responses;
@@ -19,14 +25,14 @@ class TrackStarService extends ChangeNotifier {
   int? roomId;
   int trackNumber = 0, startTime = 0;
   bool guessedTitle = false, guessedArtist = false;
-  Map<int, String> players = {};
+  Map<int, Player> players = {};
 
   TrackStarService() {
     responses = ws.stream.asBroadcastStream();
 
     playerJoinedSubscription =
         responseStream<PlayerJoined>().listen((PlayerJoined msg) {
-      players[msg.playerId] = msg.playerName;
+      players[msg.playerId] = Player(msg.playerName);
       notifyListeners();
     });
 
@@ -114,7 +120,8 @@ class TrackStarService extends ChangeNotifier {
 
     await playerJoinedSubscription.cancel();
     await playerLeftSubscription.cancel();
-
+    await trackStartedSubscription.cancel();
+    await guessResponseSubscription.cancel();
     ws.sink.close();
 
     super.dispose();

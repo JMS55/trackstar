@@ -5,12 +5,6 @@ import 'package:trackstar/trackstar_service.dart';
 
 external int get millisecondsSinceEpoch;
 
-class Player {
-  String userName;
-  int score;
-  Player(this.userName, this.score);
-}
-
 class GamePage extends StatelessWidget {
   GamePage({Key? key}) : super(key: key);
 
@@ -36,7 +30,7 @@ class GamePage extends StatelessWidget {
     Widget playersList = Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => ListView(
               children: trackStarService.players.values
-                  .map((player) => Text(player))
+                  .map((player) => Text('$player.userName: $player.score'))
                   .toList(),
               shrinkWrap: true,
             ));

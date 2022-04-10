@@ -13,7 +13,7 @@ class LobbyPage extends StatelessWidget {
     Widget playersList = Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => ListView(
               children: trackStarService.players.values
-                  .map((player) => Text(player))
+                  .map((player) => Text(player.userName))
                   .toList(),
               shrinkWrap: true,
             ));
