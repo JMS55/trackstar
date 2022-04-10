@@ -110,17 +110,22 @@ wss.on("connection", ws => {
                 }));
                 break;
             case 'leave_room':
-                rooms.get(message.room_id).players.delete(message.player_id);
+                const room = rooms.get(message.room_id);
+                room.players.delete(message.player_id);
                 clients.delete(message.player_id);
                 ws.send(JSON.stringify({
                     topic: 'leave_room_response',
                     status: 'success'
                 }));
-                sendEachClientInRoomAux(message.room_id, player => ({
-                    topic: 'player_left',
-                    room_id: message.room.id,
-                    player_id: player.id
-                }));
+                if (room.players.size == 0) {
+                    rooms.delete(message.room_id);
+                } else {
+                    sendEachClientInRoomAux(message.room_id, player => ({
+                        topic: 'player_left',
+                        room_id: message.room.id,
+                        player_id: player.id
+                    }));
+                }
                 break;
             case 'start_game':
                 ws.send(JSON.stringify({
