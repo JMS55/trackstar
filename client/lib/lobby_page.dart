@@ -17,20 +17,22 @@ class _LobbyPageState extends State<LobbyPage> {
   List<String> players = [];
 
   @override
-  void initState() {
-    widget.trackStarService
+  Future<void> initState() async {
+    await widget.trackStarService
         .responseStream<PlayerJoined>()
         .forEach((PlayerJoined msg) {
       setState(() {
         // TODO
+        // process when a player joins
       });
     });
 
-    widget.trackStarService
+    await widget.trackStarService
         .responseStream<PlayerLeft>()
         .forEach((PlayerLeft msg) {
       setState(() {
         // TODO
+        // process when a player leaves
       });
     });
 
