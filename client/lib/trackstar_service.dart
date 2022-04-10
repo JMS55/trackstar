@@ -26,7 +26,8 @@ class TrackStarService extends ChangeNotifier {
   late StreamSubscription<RoundOver> roundOverSubscription;
 
   late String userName;
-  late String? trackName, trackArtists;
+  late String? trackName;
+  late List<String>? trackArtists;
   late int playerId, waitTime;
   int? roomId;
   int trackNumber = -1, startTime = 0;
@@ -156,7 +157,7 @@ class TrackStarService extends ChangeNotifier {
       throw Error();
     } else {
       response.existingPlayers.forEach((key, value) {
-        players[key] = Player(value);
+        players[int.parse(key)] = Player(value);
       });
       return response;
     }
@@ -251,7 +252,7 @@ class JoinRoomRequest {
 class JoinRoomResponse extends Response {
   final String status;
   final int playerId;
-  final Map<int, String> existingPlayers;
+  final Map<String, String> existingPlayers;
 
   JoinRoomResponse(this.status, this.playerId, this.existingPlayers);
   factory JoinRoomResponse.fromJson(Map<String, dynamic> json) =>
@@ -322,7 +323,8 @@ class TrackStarted extends Response {
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class TrackEnded extends Response {
-  final String trackName, trackArtists;
+  final String trackName;
+  final List<String> trackArtists;
   final int waitTime;
   TrackEnded(this.trackName, this.trackArtists, this.waitTime);
   factory TrackEnded.fromJson(Map<String, dynamic> json) =>
