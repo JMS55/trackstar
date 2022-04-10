@@ -1,18 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:trackstar/lobby_page.dart';
 import 'trackstar_service.dart';
 
 class EnterNamePage extends StatelessWidget {
-  EnterNamePage(
-      {Key? key, required this.trackStarService, required this.isCreatingRoom})
-      : super(key: key);
+  EnterNamePage({Key? key, required this.isCreatingRoom}) : super(key: key);
 
-  final TrackStarService trackStarService;
   final textController = TextEditingController();
   final bool isCreatingRoom;
 
   @override
   Widget build(BuildContext context) {
+    Future<void> nextPage() async {
+      if (textController.text != '') {
+        TrackStarService trackStarService =
+            Provider.of<TrackStarService>(context, listen: false);
+        trackStarService.userName = textController.text;
+
+        if (isCreatingRoom) {
+          CreateRoomResponse response = await trackStarService.createRoom();
+          trackStarService.roomId = response.roomId;
+          trackStarService.players[response.creatorId] =
+              trackStarService.userName;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const LobbyPage(isRoomCreator: true)),
+          );
+        } else {
+          trackStarService.joinRoom();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const LobbyPage(isRoomCreator: false)),
+          );
+        }
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('TrackStar')),
       body: Center(
@@ -30,33 +55,9 @@ class EnterNamePage extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.navigate_next_rounded),
-          onPressed: () async {
-            if (textController.text != '') {
-              trackStarService.userName = textController.text;
-
-              if (isCreatingRoom) {
-                CreateRoomResponse response =
-                    await trackStarService.createRoom();
-                trackStarService.roomId = response.roomId;
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => LobbyPage(
-                              trackStarService: trackStarService,
-                              isRoomCreator: true,
-                            )));
-              } else {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => LobbyPage(
-                              trackStarService: trackStarService,
-                              isRoomCreator: false,
-                            )));
-              }
-            }
-          }),
+        child: const Icon(Icons.navigate_next_rounded),
+        onPressed: nextPage,
+      ),
     );
   }
 }

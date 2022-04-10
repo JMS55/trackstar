@@ -32,15 +32,19 @@ const rooms = new Map();
 const clients = new Map();
 
 function sendEachClientInRoom(room_id, json) {
-    room = rooms.get(message.room_id);
+    sendEachClientInRoomAux(room_id, player => json);
+}
+
+function sendEachClientInRoomAux(room_id, make_json) {
+    room = rooms.get(room_id);
     room.players.forEach((player, player_id) => {
         client = clients.get(player_id);
-        client.send(JSON.stringify(json));
+        client.send(JSON.stringify(make_json(player)));
     });
 }
 
 function playTrack(room_id) {
-    rooms.get(message.room_id).state = 'track_playing'
+    rooms.get(room_id).state = 'track_playing'
     sendEachClientInRoom(room_id, {
         topic: 'track_started',
         track_number: room.track_number,
@@ -52,7 +56,7 @@ function playTrack(room_id) {
 }
 
 function revealTrackAndWait(room_id) {
-    rooms.get(message.room_id).state = 'waiting'
+    rooms.get(room_id).state = 'waiting'
     sendEachClientInRoom(room_id, {
         topic: 'track_ended',
         track_name: 'Levitating (feat. DaBaby)', //TODO
@@ -63,7 +67,7 @@ function revealTrackAndWait(room_id) {
 }
 
 function endRound(room_id) {
-    rooms.get(message.room_id).state = 'round_over'
+    rooms.get(room_id).state = 'round_over'
     sendEachClientInRoom(room_id, {
         topic: 'round_over'
     });
@@ -98,12 +102,12 @@ wss.on("connection", ws => {
                     status: 'success',
                     player_id: joining_player.id
                 }));
-                sendEachClientInRoom(room_id, {
+                sendEachClientInRoomAux(message.room_id, player => ({
                     topic: 'player_joined',
                     room_id: room.id,
                     player_id: player.id,
                     player_name: player.name
-                });
+                }));
                 break;
             case 'leave_room':
                 rooms.get(message.room_id).players.delete(message.player_id);
@@ -112,18 +116,18 @@ wss.on("connection", ws => {
                     topic: 'leave_room_response',
                     status: 'success'
                 }));
-                sendEachClientInRoom(room_id, {
+                sendEachClientInRoomAux(message.room_id, player => ({
                     topic: 'player_left',
-                    room_id: room.id,
+                    room_id: message.room.id,
                     player_id: player.id
-                });
+                }));
                 break;
             case 'start_game':
                 ws.send(JSON.stringify({
                     topic: 'start_game_response',
                     status: 'success'
                 }));
-                playTrack(room_id);
+                playTrack(message.room_id);
             case 'make_guess':
                 result = 'wrong'; //TODO
                 ws.send(JSON.stringify({
@@ -131,7 +135,7 @@ wss.on("connection", ws => {
                     result: result
                 }));
                 if (result != 'wrong') {
-                    sendEachClientInRoom(room_id, {
+                    sendEachClientInRoom(message.room_id, {
                         topic: 'correct_guess_made',
                         player_id: message.player_id,
                         field_guessed: result == 'correct_artist' ? 'artist' : 'title',

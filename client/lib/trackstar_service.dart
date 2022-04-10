@@ -1,26 +1,36 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 part 'trackstar_service.g.dart';
 
-class TrackStarService {
-  TrackStarService() {
-    responses = ws.stream.asBroadcastStream();
-  }
-
+class TrackStarService extends ChangeNotifier {
   final ws = WebSocketChannel.connect(Uri.parse('ws://104.248.230.123:8080'));
   late Stream<dynamic> responses;
+  late StreamSubscription<PlayerJoined> playerJoinedSubscription;
+  late StreamSubscription<PlayerLeft> playerLeftSubscription;
 
   late String userName;
   int? roomId;
   late int playerId;
+  Map<int, String> players = {};
 
-  Stream<T> responseStream<T extends Response>() {
-    return responses
-        .map((m) => Response.fromJson(jsonDecode(m)))
-        .where((m) => m is T)
-        .cast<T>();
+  TrackStarService() {
+    responses = ws.stream.asBroadcastStream();
+
+    playerJoinedSubscription =
+        responseStream<PlayerJoined>().listen((PlayerJoined msg) {
+      players[msg.playerId] = msg.playerName;
+      notifyListeners();
+    });
+
+    playerLeftSubscription =
+        responseStream<PlayerLeft>().listen((PlayerLeft msg) {
+      players.remove(msg.playerId);
+      notifyListeners();
+    });
   }
 
   Future<CreateRoomResponse> createRoom() async {
@@ -65,14 +75,29 @@ class TrackStarService {
         .add(jsonEncode(MakeGuessRequest(roomId!, playerId, guess).toJson()));
   }
 
-  Future<void> shutdown() async {
+  Stream<T> responseStream<T extends Response>() {
+    return responses
+        .map((m) => Response.fromJson(jsonDecode(m)))
+        .where((m) => m is T)
+        .cast<T>();
+  }
+
+  @override
+  Future<void> dispose() async {
     if (roomId != null) {
       await leaveRoom();
     }
 
+    await playerJoinedSubscription.cancel();
+    await playerLeftSubscription.cancel();
+
     ws.sink.close();
+
+    super.dispose();
   }
 }
+
+// -----------------------------------------------------------------------------
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class CreateRoomRequest {
@@ -202,16 +227,16 @@ class RoundOver extends Response {
 @JsonSerializable(fieldRename: FieldRename.snake)
 class PlayerJoined extends Response {
   final String playerName;
-  final int roomId, playerId;
-  PlayerJoined(this.roomId, this.playerId, this.playerName);
+  final int playerId;
+  PlayerJoined(this.playerId, this.playerName);
   factory PlayerJoined.fromJson(Map<String, dynamic> json) =>
       _$PlayerJoinedFromJson(json);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class PlayerLeft extends Response {
-  final int roomId, playerId;
-  PlayerLeft(this.roomId, this.playerId);
+  final int playerId;
+  PlayerLeft(this.playerId);
   factory PlayerLeft.fromJson(Map<String, dynamic> json) =>
       _$PlayerLeftFromJson(json);
 }
