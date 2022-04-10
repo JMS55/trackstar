@@ -105,7 +105,7 @@ async function fillMissingUrls() {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), WEB_SCRAPE_TIMEOUT);
         try {
-            const response = await fetch(embed_url, {signal: controller.signal});
+            const response = await fetch(embed_url, { signal: controller.signal });
             const body = await response.text();
             const tail = body.substring(body.indexOf('preview_url') + 20);
             const preview_url_encoded = tail.substring(0, tail.indexOf('%3Fcid%3D'));
@@ -113,7 +113,7 @@ async function fillMissingUrls() {
             track.preview_url = preview_url;
         } catch (error) {
         } finally {
-         	clearTimeout(timeout);
+            clearTimeout(timeout);
         }
     });
 }

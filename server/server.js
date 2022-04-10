@@ -87,7 +87,7 @@ wss.on("connection", ws => {
         DEBUG && console.log(message);
         switch (message.topic) {
             case 'create_room':
-                room = new Room(message.creator_name);
+                const room = new Room(message.creator_name);
                 rooms.set(room.id, room);
                 clients.set(room.creator_id, ws);
                 ws.send(JSON.stringify({
