@@ -20,6 +20,8 @@ class EnterNamePage extends StatelessWidget {
         if (isCreatingRoom) {
           CreateRoomResponse response = await trackStarService.createRoom();
           trackStarService.roomId = response.roomId;
+          trackStarService.players[response.creatorId] =
+              trackStarService.userName;
           Navigator.push(
             context,
             MaterialPageRoute(
