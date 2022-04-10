@@ -138,9 +138,10 @@ wss.on("connection", ws => {
                 }));
                 playTrack(message.room_id);
             case 'make_guess':
-                if (spotify.isCorrectTitle(room.current_track, message.guess)) {
+                var current_track = rooms.get(message.room_id).current_track
+                if (spotify.isCorrectTitle(current_track, message.guess)) {
                     result = 'correct_title';
-                } else if (spotify.isCorrectArtist(room.current_track, message.guess)) {
+                } else if (spotify.isCorrectArtist(current_track, message.guess)) {
                     result = 'correct_artist';
                 } else {
                     result = 'wrong';
