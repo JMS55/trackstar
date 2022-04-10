@@ -3,7 +3,6 @@ import 'dart:collection';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -32,7 +31,7 @@ class TrackStarService extends ChangeNotifier {
   int? roomId;
   int trackNumber = -1, startTime = 0;
   bool guessedTitle = false, guessedArtist = false;
-  AudioPlayer audioPlayer = AudioPlayer(mode: PlayerMode.LOW_LATENCY);
+  AudioPlayer audioPlayer = AudioPlayer();
   Map<int, Player> players = {};
   Map<int, List> correctGuesses = {};
 
@@ -44,12 +43,14 @@ class TrackStarService extends ChangeNotifier {
     playerJoinedSubscription =
         responseStream<PlayerJoined>().listen((PlayerJoined msg) {
       players[msg.playerId] = Player(msg.playerName);
+
       notifyListeners();
     });
 
     playerLeftSubscription =
         responseStream<PlayerLeft>().listen((PlayerLeft msg) {
       players.remove(msg.playerId);
+
       notifyListeners();
     });
 
@@ -63,6 +64,7 @@ class TrackStarService extends ChangeNotifier {
       trackArtists = null;
 
       await audioPlayer.play(msg.trackUrl);
+
       notifyListeners();
     });
 
@@ -86,6 +88,8 @@ class TrackStarService extends ChangeNotifier {
         players[sortedGuesses[2]]?.score += 2;
       }
       correctGuesses = {};
+
+      notifyListeners();
     });
 
     guessResponseSubscription =
@@ -119,6 +123,8 @@ class TrackStarService extends ChangeNotifier {
           correctGuesses[msg.playerId]![1]) {
         correctGuesses[msg.playerId]![2] = msg.timeOfGuess;
       }
+
+      notifyListeners();
     });
 
     roundOverSubscription = responseStream<RoundOver>().listen((RoundOver msg) {
@@ -139,11 +145,13 @@ class TrackStarService extends ChangeNotifier {
     }
   }
 
-  Future<void> joinRoom() async {
+  Future<JoinRoomResponse> joinRoom() async {
     ws.sink.add(jsonEncode(JoinRoomRequest(roomId!, userName).toJson()));
     JoinRoomResponse response = await responseStream<JoinRoomResponse>().first;
     if (response.status != 'success') {
       throw Error();
+    } else {
+      return response;
     }
   }
 
