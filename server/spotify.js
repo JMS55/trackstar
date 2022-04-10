@@ -1,11 +1,9 @@
 const util = require('util');
 const fetch = require('node-fetch');
-const axios = require('axios');
-const qs = require('qs');
 const Spotify = require('spotify-web-api-node');
 
 const TRACK_PULL_LIMIT = 100;
-const WEB_SCRAPE_TIMEOUT = 100;
+const WEB_SCRAPE_TIMEOUT = 500;
 
 class Track {
     constructor(id, preview_url, title, authors) {
@@ -96,9 +94,9 @@ function removeNullTracks() {
 }
 
 async function fillMissingUrls() {
-    tracks.forEach(async track => {
+    for (const track of tracks) {
         if (track.preview_url) {
-            return;
+            continue;
         }
         const embed_url = 'https://open.spotify.com/embed/track/' + track.id;
         const AbortController = globalThis.AbortController;
@@ -112,16 +110,18 @@ async function fillMissingUrls() {
             const preview_url = preview_url_encoded.replace('%3A', ':').replace(/%2F/g, '/')
             track.preview_url = preview_url;
         } catch (error) {
+            console.log(error);
         } finally {
             clearTimeout(timeout);
         }
-    });
+    };
 }
 
 async function pullTracks(playlist_id, token) {
     spotify.setAccessToken(token);
     await pullTracksAux(playlist_id, token, 0);
     await fillMissingUrls();
+    console.log(tracks.length);
     removeNullTracks();
     console.log(tracks.length);
 }
@@ -146,33 +146,9 @@ async function pullTracksAux(playlist_id, token, offset) {
     }
 }
 
-const client_id = process.env.TS_SPOTIFY_CLIENT_ID;
-const client_secret = process.env.TS_SPOTIFY_CLIENT_SECRET;
+const auth_token = process.env.TS_SPOTIFY_AUTH_TOKEN;
 const playlist_id = process.env.TS_PLAYLIST_ID;
 
-const headers = {
-    headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    auth: {
-        username: client_id,
-        password: client_secret
-    },
-};
-const data = {
-    grant_type: 'client_credentials'
-};
-
-(async () => {
-    const response = await axios.post(
-        'https://accounts.spotify.com/api/token',
-        qs.stringify(data),
-        headers
-    );
-    pullTracks(playlist_id, response.data.access_token);
-})();
-
-//pullTracks('5NeJXqMCPAspzrADl9ppKn', <token>);
+pullTracks(playlist_id, auth_token);
 
 module.exports = { isCorrectTitle, isCorrectArtist, getRandomUnplayedTrack };
