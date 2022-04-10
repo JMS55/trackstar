@@ -53,30 +53,27 @@ class _LobbyPageState extends State<LobbyPage> {
         Provider.of<TrackStarService>(context, listen: false).roomId!;
 
     List<Widget> col = <Widget>[
-      Container(
-        alignment: Alignment.centerLeft,
-        child: FittedBox(
-          fit: BoxFit.contain,
-          child: RichText(
-            text: TextSpan(
-              text: 'Room Code ',
-              style: const TextStyle(
-                color: Color.fromARGB(255, 5, 6, 92),
-                fontSize: 72,
-                fontWeight: FontWeight.w500,
-              ),
-              children: [
-                TextSpan(
-                  text: ' $roomCode ',
-                  style: const TextStyle(
-                    color: Color.fromARGB(255, 222, 228, 238),
-                    backgroundColor: Color.fromARGB(255, 5, 6, 92),
-                    fontSize: 72,
-                    fontWeight: FontWeight.w900,
-                  ),
-                )
-              ],
+      FittedBox(
+        fit: BoxFit.contain,
+        child: RichText(
+          text: TextSpan(
+            text: 'Room Code ',
+            style: const TextStyle(
+              color: Color.fromARGB(255, 5, 6, 92),
+              fontSize: 72,
+              fontWeight: FontWeight.w500,
             ),
+            children: [
+              TextSpan(
+                text: ' $roomCode ',
+                style: const TextStyle(
+                  color: Color.fromARGB(255, 222, 228, 238),
+                  backgroundColor: Color.fromARGB(255, 5, 6, 92),
+                  fontSize: 72,
+                  fontWeight: FontWeight.w900,
+                ),
+              )
+            ],
           ),
         ),
       ),
