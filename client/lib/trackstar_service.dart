@@ -29,7 +29,7 @@ class TrackStarService extends ChangeNotifier {
   late String? trackName, trackArtists;
   late int playerId, waitTime;
   int? roomId;
-  int trackNumber = 0, startTime = 0;
+  int trackNumber = -1, startTime = 0;
   bool guessedTitle = false, guessedArtist = false;
   AudioPlayer audioPlayer = AudioPlayer(mode: PlayerMode.LOW_LATENCY);
   Map<int, Player> players = {};
@@ -269,6 +269,7 @@ class StartGameResponse extends Response {
 @JsonSerializable(fieldRename: FieldRename.snake)
 class MakeGuessRequest {
   String topic = 'make_guess';
+  int timeOfGuess = DateTime.now().millisecondsSinceEpoch;
   int roomId, playerId;
   String guess;
   MakeGuessRequest(this.roomId, this.playerId, this.guess);

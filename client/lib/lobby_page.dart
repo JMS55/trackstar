@@ -4,11 +4,16 @@ import 'package:trackstar/trackstar_service.dart';
 import 'package:trackstar/game_page.dart';
 import 'trackstar_service.dart';
 
-class LobbyPage extends StatelessWidget {
+class LobbyPage extends StatefulWidget {
   const LobbyPage({Key? key, required this.isRoomCreator}) : super(key: key);
 
   final bool isRoomCreator;
 
+  @override
+  State<LobbyPage> createState() => _LobbyPageState();
+}
+
+class _LobbyPageState extends State<LobbyPage> {
   @override
   Widget build(BuildContext context) {
     Future<void> startGame() async {
@@ -91,9 +96,17 @@ class LobbyPage extends StatelessWidget {
         ),
       ),
     ];
-    if (isRoomCreator) {
+    if (widget.isRoomCreator) {
       col.add(const SizedBox(height: 48));
       col.add(button('Start Game', startGame));
+    }
+
+    TrackStarService trackStarService = Provider.of<TrackStarService>(context);
+    if (trackStarService.trackNumber == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => GamePage()),
+      );
     }
 
     return Scaffold(
