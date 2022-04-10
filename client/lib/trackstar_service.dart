@@ -151,6 +151,9 @@ class TrackStarService extends ChangeNotifier {
     if (response.status != 'success') {
       throw Error();
     } else {
+      response.existingPlayers.forEach((key, value) {
+        players[key] = Player(value);
+      });
       return response;
     }
   }
@@ -244,8 +247,9 @@ class JoinRoomRequest {
 class JoinRoomResponse extends Response {
   final String status;
   final int playerId;
+  final Map<int, String> existingPlayers;
 
-  JoinRoomResponse(this.status, this.playerId);
+  JoinRoomResponse(this.status, this.playerId, this.existingPlayers);
   factory JoinRoomResponse.fromJson(Map<String, dynamic> json) =>
       _$JoinRoomResponseFromJson(json);
 }
