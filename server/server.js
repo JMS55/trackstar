@@ -1,5 +1,6 @@
 const WebSocketServer = require('ws');
-const util = require('util')
+const util = require('util');
+const spotify = require('./spotify');
 
 const DEBUG = true;
 const MAX_PLAYER_ID = 99999;
@@ -24,7 +25,8 @@ class Room {
         this.creator_id = creator.id;
         this.players.set(creator.id, creator);
         this.track_number = 1;
-        this.played_tracks = new Array();
+        this.current_track = null;
+        this.played_track_urls = new Set();
     }
 }
 
@@ -40,23 +42,26 @@ function sendEachClientInRoom(room_id, json) {
 }
 
 function playTrack(room_id) {
-    rooms.get(message.room_id).state = 'track_playing'
+    room = rooms.get(message.room_id);
+    room.state = 'track_playing';
+    room.current_track = spotify.getRandomUnplayedTrack(room.played_track_urls);
+    room.played_track_urls.push(room.current_track.preview_url);
     sendEachClientInRoom(room_id, {
         topic: 'track_started',
         track_number: room.track_number,
         tracks_per_round: TRACKS_PER_ROUND,
-        track_url: 'https://p.scdn.co/mp3-preview/baa8859b39dc78685642e1adfe60ec5ef8b3a5cf', //TODO
+        track_url: room.current_track.preview_url,
         start_time: Date.now()
     });
     setTimeout(revealTrackAndWait, TRACK_PLAY_LENGTH, room_id);
 }
 
 function revealTrackAndWait(room_id) {
-    rooms.get(message.room_id).state = 'waiting'
+    rooms.get(message.room_id).state = 'waiting';
     sendEachClientInRoom(room_id, {
         topic: 'track_ended',
-        track_name: 'Levitating (feat. DaBaby)', //TODO
-        track_artists: 'Dua Lipa, DaBaby' //TODO
+        track_name: room.current_track.title,
+        track_artists: room.current_track.artists
     });
     room.track_number++;
     setTimeout(room.track_number <= TRACKS_PER_ROUND ? playTrack : endRound, TIME_BETWEEN_ROUNDS, room_id);
@@ -100,7 +105,6 @@ wss.on("connection", ws => {
                 }));
                 sendEachClientInRoom(room_id, {
                     topic: 'player_joined',
-                    room_id: room.id,
                     player_id: player.id,
                     player_name: player.name
                 });
@@ -114,7 +118,6 @@ wss.on("connection", ws => {
                 }));
                 sendEachClientInRoom(room_id, {
                     topic: 'player_left',
-                    room_id: room.id,
                     player_id: player.id
                 });
                 break;
@@ -125,7 +128,13 @@ wss.on("connection", ws => {
                 }));
                 playTrack(room_id);
             case 'make_guess':
-                result = 'wrong'; //TODO
+                if (spotify.isCorrectTitle(room.current_track, message.guess)) {
+                    result = 'correct_title';
+                } else if (spotify.isCorrectArtist(room.current_track, message.guess)) {
+                    result = 'correct_artist';
+                } else {
+                    result = 'wrong';
+                }
                 ws.send(JSON.stringify({
                     topic: 'make_guess_response',
                     result: result
@@ -135,7 +144,7 @@ wss.on("connection", ws => {
                         topic: 'correct_guess_made',
                         player_id: message.player_id,
                         field_guessed: result == 'correct_artist' ? 'artist' : 'title',
-                        time_of_guess: Date.now()
+                        time_of_guess: message.time_of_guess
                     })
                 }
             default:
