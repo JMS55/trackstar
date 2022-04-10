@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'home_page.dart';
 import 'trackstar_service.dart';
@@ -15,12 +15,16 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const NeumorphicApp(
       title: 'TrackStar',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+      themeMode: ThemeMode.light,
+      theme: NeumorphicThemeData(
+        baseColor: Color.fromARGB(255, 231, 235, 238),
+        accentColor: Color.fromARGB(255, 49, 69, 106),
+        intensity: 0.8,
+        depth: 8,
       ),
-      home: const HomePage(),
+      home: HomePage(),
     );
   }
 }
