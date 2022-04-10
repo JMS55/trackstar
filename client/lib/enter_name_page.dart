@@ -11,6 +11,31 @@ class EnterNamePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Future<void> nextPage() async {
+      if (textController.text != '') {
+        TrackStarService trackStarService =
+            Provider.of<TrackStarService>(context, listen: false);
+        trackStarService.userName = textController.text;
+
+        if (isCreatingRoom) {
+          CreateRoomResponse response = await trackStarService.createRoom();
+          trackStarService.roomId = response.roomId;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const LobbyPage(isRoomCreator: true)),
+          );
+        } else {
+          trackStarService.joinRoom();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const LobbyPage(isRoomCreator: false)),
+          );
+        }
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('TrackStar')),
       body: Center(
@@ -28,34 +53,9 @@ class EnterNamePage extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.navigate_next_rounded),
-          onPressed: () async {
-            if (textController.text != '') {
-              TrackStarService trackStarService =
-                  Provider.of<TrackStarService>(context, listen: false);
-              trackStarService.userName = textController.text;
-
-              if (isCreatingRoom) {
-                CreateRoomResponse response =
-                    await trackStarService.createRoom();
-                trackStarService.roomId = response.roomId;
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const LobbyPage(
-                              isRoomCreator: true,
-                            )));
-              } else {
-                trackStarService.joinRoom();
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const LobbyPage(
-                              isRoomCreator: false,
-                            )));
-              }
-            }
-          }),
+        child: const Icon(Icons.navigate_next_rounded),
+        onPressed: nextPage,
+      ),
     );
   }
 }

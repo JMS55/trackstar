@@ -7,6 +7,22 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void createRoom() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EnterNamePage(isCreatingRoom: true),
+        ),
+      );
+    }
+
+    void joinRoom() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => EnterCodePage()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('TrackStar')),
       body: Center(
@@ -18,24 +34,11 @@ class HomePage extends StatelessWidget {
               children: <Widget>[
                 ElevatedButton(
                   child: const Text('Create Room'),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => EnterNamePage(
-                                isCreatingRoom: true,
-                              )),
-                    );
-                  },
+                  onPressed: createRoom,
                 ),
                 ElevatedButton(
                   child: const Text('Join Room'),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => EnterCodePage()),
-                    );
-                  },
+                  onPressed: joinRoom,
                 ),
               ],
             ),

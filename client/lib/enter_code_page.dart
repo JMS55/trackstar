@@ -11,6 +11,20 @@ class EnterCodePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Future<void> nextPage() async {
+      if (textController.text != '') {
+        TrackStarService trackStarService =
+            Provider.of<TrackStarService>(context, listen: false);
+        trackStarService.roomId = int.parse(textController.text);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EnterNamePage(isCreatingRoom: false),
+          ),
+        );
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('TrackStar')),
       body: Center(
@@ -30,19 +44,9 @@ class EnterCodePage extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.navigate_next_rounded),
-          onPressed: () async {
-            if (textController.text != '') {
-              TrackStarService trackStarService =
-                  Provider.of<TrackStarService>(context, listen: false);
-              trackStarService.roomId = int.parse(textController.text);
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          EnterNamePage(isCreatingRoom: false)));
-            }
-          }),
+        child: const Icon(Icons.navigate_next_rounded),
+        onPressed: nextPage,
+      ),
     );
   }
 }
