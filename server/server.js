@@ -49,7 +49,7 @@ function playTrack(room_id) {
     room = rooms.get(room_id);
     room.state = 'track_playing';
     room.current_track = spotify.getRandomUnplayedTrack(room.played_track_urls);
-    room.played_track_urls.push(room.current_track.preview_url);
+    room.played_track_urls.add(room.current_track.preview_url);
     sendEachClientInRoom(room_id, {
         topic: 'track_started',
         track_number: room.track_number,
