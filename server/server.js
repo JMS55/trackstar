@@ -69,7 +69,8 @@ function revealTrackAndWait(room_id) {
     sendEachClientInRoom(room_id, {
         topic: 'track_ended',
         track_name: room.current_track.title,
-        track_artists: room.current_track.artists
+        track_artists: room.current_track.artists,
+        wait_time: TIME_BETWEEN_ROUNDS
     });
     room.track_number++;
     setTimeout(room.track_number <= TRACKS_PER_ROUND ? playTrack : endRound, TIME_BETWEEN_ROUNDS, room_id);
