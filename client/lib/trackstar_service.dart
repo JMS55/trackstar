@@ -84,6 +84,7 @@ class TrackStarService extends ChangeNotifier {
       print(
           "******************************************************************************************************************");
       print(sortedGuesses);
+
       if (sortedGuesses.isNotEmpty) {
         players[sortedGuesses[0]]?.score += 4;
       } else if (sortedGuesses.length >= 2) {
