@@ -28,7 +28,7 @@ class EnterNamePage extends StatelessWidget {
                 builder: (context) => const LobbyPage(isRoomCreator: true)),
           );
         } else {
-          trackStarService.joinRoom();
+          await trackStarService.joinRoom();
           Navigator.push(
             context,
             MaterialPageRoute(
