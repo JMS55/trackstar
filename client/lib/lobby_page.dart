@@ -63,18 +63,6 @@ class LobbyPage extends StatelessWidget {
           ),
         ),
       ),
-      const SizedBox(height: 48),
-      Container(
-        alignment: Alignment.centerLeft,
-        child: const Text(
-          'Players',
-          style: TextStyle(
-            color: Color.fromARGB(255, 5, 6, 92),
-            fontSize: 26,
-            fontWeight: FontWeight.w300,
-          ),
-        ),
-      ),
       Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => ListView.separated(
           itemCount: trackStarService.players.length,
