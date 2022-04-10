@@ -113,7 +113,7 @@ wss.on("connection", ws => {
                     topic: 'join_room_response',
                     status: 'success',
                     player_id: joining_player.id,
-                    existing_player_ids: room.players.keys
+                    existing_players: new Map(Array.from(room.players.values()))
                 }));
                 room.players.set(joining_player.id, joining_player);
                 sendEachClientInRoom(message.room_id, {
