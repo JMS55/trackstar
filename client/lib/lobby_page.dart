@@ -20,6 +20,7 @@ class _LobbyPageState extends State<LobbyPage> {
       TrackStarService trackStarService =
           Provider.of<TrackStarService>(context, listen: false);
       await trackStarService.startGame();
+      Navigator.pop(context);
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => GamePage()),
@@ -101,6 +102,7 @@ class _LobbyPageState extends State<LobbyPage> {
     TrackStarService trackStarService = Provider.of<TrackStarService>(context);
     if (trackStarService.trackNumber == 1) {
       Future.delayed(Duration.zero, () {
+        Navigator.pop(context);
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => GamePage()),
