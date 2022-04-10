@@ -87,7 +87,10 @@ class TrackStarService extends ChangeNotifier {
       } else if (sortedGuesses.length >= 3) {
         players[sortedGuesses[2]]?.score += 2;
       }
-      correctGuesses = {};
+
+      correctGuesses.forEach((key, value) {
+        correctGuesses[key] = [false, false, correctGuesses[key]![2]];
+      });
 
       notifyListeners();
     });
