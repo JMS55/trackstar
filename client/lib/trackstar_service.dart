@@ -81,9 +81,6 @@ class TrackStarService extends ChangeNotifier {
               (pid1, pid2) =>
                   correctGuesses[pid1]![2].compareTo(correctGuesses[pid2]![2]))
           .forEach((k, v) => sortedGuesses.add(k));
-      print(
-          "******************************************************************************************************************");
-      print(sortedGuesses);
 
       if (sortedGuesses.isNotEmpty) {
         players[sortedGuesses[0]]?.score += 4;
