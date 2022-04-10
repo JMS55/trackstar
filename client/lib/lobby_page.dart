@@ -11,6 +11,16 @@ class LobbyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Future<void> startGame() async {
+      TrackStarService trackStarService =
+          Provider.of<TrackStarService>(context, listen: false);
+      await trackStarService.startGame();
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => GamePage()),
+      );
+    }
+
     Widget button(String label, void Function()? onPressed) {
       return SizedBox(
         width: double.infinity,
@@ -83,12 +93,7 @@ class LobbyPage extends StatelessWidget {
     ];
     if (isRoomCreator) {
       col.add(const SizedBox(height: 48));
-      col.add(button(
-          'Start Game',
-          () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => GamePage()),
-              )));
+      col.add(button('Start Game', startGame));
     }
 
     return Scaffold(

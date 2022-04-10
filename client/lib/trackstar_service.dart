@@ -13,15 +13,17 @@ class Player {
 }
 
 class TrackStarService extends ChangeNotifier {
-  final ws = WebSocketChannel.connect(Uri.parse('ws://104.248.230.123:8080'));
   late Stream<dynamic> responses;
+  final ws = WebSocketChannel.connect(Uri.parse('ws://104.248.230.123:8080'));
   late StreamSubscription<PlayerJoined> playerJoinedSubscription;
   late StreamSubscription<PlayerLeft> playerLeftSubscription;
   late StreamSubscription<TrackStarted> trackStartedSubscription;
+  late StreamSubscription<TrackEnded> trackEndedSubscription;
   late StreamSubscription<MakeGuessResponse> guessResponseSubscription;
 
   late String userName;
-  late int playerId;
+  late String? trackName, trackArtists;
+  late int playerId, waitTime;
   int? roomId;
   int trackNumber = 0, startTime = 0;
   bool guessedTitle = false, guessedArtist = false;
@@ -48,7 +50,17 @@ class TrackStarService extends ChangeNotifier {
       startTime = msg.startTime;
       guessedArtist = false;
       guessedTitle = false;
+      trackName = null;
+      trackArtists = null;
+
       notifyListeners();
+    });
+
+    trackEndedSubscription =
+        responseStream<TrackEnded>().listen((TrackEnded msg) {
+      trackName = msg.trackName;
+      trackArtists = msg.trackArtists;
+      waitTime = msg.waitTime;
     });
 
     guessResponseSubscription =
@@ -224,9 +236,9 @@ class MakeGuessResponse extends Response {
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class TrackStarted extends Response {
-  final String topic, trackUrl;
+  final String trackUrl;
   final int trackNumber, startTime;
-  TrackStarted(this.topic, this.trackUrl, this.trackNumber, this.startTime);
+  TrackStarted(this.trackUrl, this.trackNumber, this.startTime);
   factory TrackStarted.fromJson(Map<String, dynamic> json) =>
       _$TrackStartedFromJson(json);
 }
@@ -234,7 +246,8 @@ class TrackStarted extends Response {
 @JsonSerializable(fieldRename: FieldRename.snake)
 class TrackEnded extends Response {
   final String trackName, trackArtists;
-  TrackEnded(this.trackName, this.trackArtists);
+  final int waitTime;
+  TrackEnded(this.trackName, this.trackArtists, this.waitTime);
   factory TrackEnded.fromJson(Map<String, dynamic> json) =>
       _$TrackEndedFromJson(json);
 }

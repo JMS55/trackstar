@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
+import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:trackstar/trackstar_service.dart';
 
@@ -12,6 +13,12 @@ class GamePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Future<void> makeGuess(guess) async {
+      TrackStarService trackStarService =
+          Provider.of<TrackStarService>(context, listen: false);
+      await trackStarService.makeGuess(guess);
+    }
+
     TrackStarService trackStarService =
         Provider.of<TrackStarService>(context, listen: false);
 
@@ -47,6 +54,13 @@ class GamePage extends StatelessWidget {
                 ? const TextStyle(color: Colors.green)
                 : const TextStyle(color: Colors.black)));
 
+    Widget answers = Consumer<TrackStarService>(
+        builder: (context, trackStarService, child) => Text(trackStarService
+                    .trackName ==
+                null
+            ? 'The song was $trackStarService.trackTitle by $trackStarService.trackArtists!'
+            : ''));
+
     return Scaffold(
       appBar: AppBar(title: const Text('TrackStar')),
       body: Center(
@@ -57,15 +71,26 @@ class GamePage extends StatelessWidget {
         playersList,
         guessedTitle,
         guessedArtist,
-        TextField(
-          decoration: const InputDecoration(
-            labelText: 'Enter Guess (Song Title or Artist)',
-            border: UnderlineInputBorder(),
-          ),
-          keyboardType: TextInputType.text,
-          controller: textController,
-        )
+        trackStarService.trackName == null
+            ? TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Enter Guess (Song Title or Artist)',
+                  border: UnderlineInputBorder(),
+                ),
+                keyboardType: TextInputType.text,
+                controller: textController,
+              )
+            : answers,
       ])),
+      floatingActionButton: NeumorphicFloatingActionButton(
+        style: NeumorphicTheme.currentTheme(context)
+            .appBarTheme
+            .buttonStyle
+            .copyWith(color: const Color.fromARGB(255, 49, 69, 106)),
+        child: const Icon(Icons.navigate_next_rounded,
+            color: Color.fromARGB(255, 222, 228, 238)),
+        onPressed: () => makeGuess(textController.text),
+      ),
     );
   }
 }
