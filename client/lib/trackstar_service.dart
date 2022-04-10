@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -21,6 +23,7 @@ class TrackStarService extends ChangeNotifier {
   late StreamSubscription<TrackStarted> trackStartedSubscription;
   late StreamSubscription<TrackEnded> trackEndedSubscription;
   late StreamSubscription<MakeGuessResponse> guessResponseSubscription;
+  late StreamSubscription<CorrectGuessMade> correctResponseSubscription;
 
   late String userName;
   late String? trackName, trackArtists;
@@ -30,6 +33,7 @@ class TrackStarService extends ChangeNotifier {
   bool guessedTitle = false, guessedArtist = false;
   AudioPlayer audioPlayer = AudioPlayer(mode: PlayerMode.LOW_LATENCY);
   Map<int, Player> players = {};
+  Map<int, List> correctGuesses = {};
 
   TrackStarService() {
     responses = ws.stream.asBroadcastStream();
@@ -66,6 +70,20 @@ class TrackStarService extends ChangeNotifier {
       trackName = msg.trackName;
       trackArtists = msg.trackArtists;
       waitTime = msg.waitTime;
+
+      List sortedGuesses = [];
+      SplayTreeMap<int, String>.from(
+              correctGuesses,
+              (pid1, pid2) =>
+                  correctGuesses[pid1]![2].compareTo(correctGuesses[pid2]![2]))
+          .forEach((k, v) => sortedGuesses.add(k));
+      if (sortedGuesses.isNotEmpty) {
+        players[sortedGuesses[0]]?.score += 4;
+      } else if (sortedGuesses.length >= 2) {
+        players[sortedGuesses[1]]?.score += 3;
+      } else if (sortedGuesses.length >= 3) {
+        players[sortedGuesses[2]]?.score += 2;
+      }
     });
 
     guessResponseSubscription =
@@ -76,6 +94,28 @@ class TrackStarService extends ChangeNotifier {
       } else if (msg.result == 'correct_title') {
         guessedTitle = true;
         notifyListeners();
+      }
+    });
+
+    correctResponseSubscription =
+        responseStream<CorrectGuessMade>().listen((CorrectGuessMade msg) {
+      if (correctGuesses[msg.playerId] == null) {
+        correctGuesses[msg.playerId] = [false, false, 0];
+      }
+
+      if (msg.fieldGuessed == 'title' &&
+          correctGuesses[msg.playerId]![0] != true) {
+        correctGuesses[msg.playerId]![0] = true;
+        players[playerId]?.score += 1;
+      } else if (msg.fieldGuessed == 'artist' &&
+          correctGuesses[msg.playerId]![1] != true) {
+        correctGuesses[msg.playerId]![1] = true;
+        players[playerId]?.score += 1;
+      }
+
+      if (correctGuesses[msg.playerId]![0] &&
+          correctGuesses[msg.playerId]![1]) {
+        correctGuesses[msg.playerId]![2] = msg.timeOfGuess;
       }
     });
   }
@@ -142,6 +182,7 @@ class TrackStarService extends ChangeNotifier {
     await playerLeftSubscription.cancel();
     await trackStartedSubscription.cancel();
     await guessResponseSubscription.cancel();
+    await correctResponseSubscription.cancel();
     ws.sink.close();
 
     super.dispose();
