@@ -25,12 +25,12 @@ function isCorrectTitle(track, guess) {
 
 function isCorrectArtist(track, guess) {
     guessSimple = simplifyString(guess);
-    track.artists.forEach(artist => {
+    for (const artist of track.artists) {
         artistSimple = simplifyString(artist);
         if (closeEnough(artistSimple, guessSimple) || closeEnough(artist, 'the' + guessSimple)) {
             return true;
         }
-    });
+    };
     return false;
 }
 
