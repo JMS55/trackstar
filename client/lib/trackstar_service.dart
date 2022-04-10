@@ -137,11 +137,13 @@ class TrackStarService extends ChangeNotifier {
     }
   }
 
-  Future<void> joinRoom() async {
+  Future<JoinRoomResponse> joinRoom() async {
     ws.sink.add(jsonEncode(JoinRoomRequest(roomId!, userName).toJson()));
     JoinRoomResponse response = await responseStream<JoinRoomResponse>().first;
     if (response.status != 'success') {
       throw Error();
+    } else {
+      return response;
     }
   }
 

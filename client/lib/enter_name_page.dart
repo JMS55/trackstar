@@ -38,6 +38,7 @@ class _EnterNamePageState extends State<EnterNamePage> {
         if (widget.isCreatingRoom) {
           CreateRoomResponse response = await trackStarService.createRoom();
           trackStarService.roomId = response.roomId;
+          trackStarService.playerId = response.creatorId;
           trackStarService.players[response.creatorId] =
               Player(trackStarService.userName);
           Navigator.push(
@@ -46,7 +47,8 @@ class _EnterNamePageState extends State<EnterNamePage> {
                 builder: (context) => const LobbyPage(isRoomCreator: true)),
           );
         } else {
-          await trackStarService.joinRoom();
+          JoinRoomResponse response = await trackStarService.joinRoom();
+          trackStarService.playerId = response.playerId;
           Navigator.push(
             context,
             MaterialPageRoute(
