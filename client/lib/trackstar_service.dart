@@ -26,7 +26,8 @@ class TrackStarService extends ChangeNotifier {
   late StreamSubscription<RoundOver> roundOverSubscription;
 
   late String userName;
-  late String? trackName, trackArtists;
+  late String? trackName;
+  late List<String>? trackArtists;
   late int playerId, waitTime;
   int? roomId;
   int trackNumber = -1, startTime = 0;
@@ -74,12 +75,15 @@ class TrackStarService extends ChangeNotifier {
       trackArtists = msg.trackArtists;
       waitTime = msg.waitTime;
 
-      List sortedGuesses = [];
+      List<int> sortedGuesses = [];
       SplayTreeMap<int, String>.from(
               correctGuesses,
               (pid1, pid2) =>
                   correctGuesses[pid1]![2].compareTo(correctGuesses[pid2]![2]))
           .forEach((k, v) => sortedGuesses.add(k));
+      print(
+          "******************************************************************************************************************");
+      print(sortedGuesses);
       if (sortedGuesses.isNotEmpty) {
         players[sortedGuesses[0]]?.score += 4;
       } else if (sortedGuesses.length >= 2) {
@@ -88,11 +92,9 @@ class TrackStarService extends ChangeNotifier {
         players[sortedGuesses[2]]?.score += 2;
       }
 
-      print(correctGuesses);
       correctGuesses.forEach((key, value) {
         correctGuesses[key] = [false, false, value[2]];
       });
-      print(correctGuesses);
 
       notifyListeners();
     });
@@ -114,12 +116,10 @@ class TrackStarService extends ChangeNotifier {
         correctGuesses[msg.playerId] = [false, false, 0];
       }
 
-      if (msg.fieldGuessed == 'title' &&
-          correctGuesses[msg.playerId]![0] != true) {
+      if (msg.fieldGuessed == 'title') {
         correctGuesses[msg.playerId]![0] = true;
         players[msg.playerId]?.score += 1;
-      } else if (msg.fieldGuessed == 'artist' &&
-          correctGuesses[msg.playerId]![1] != true) {
+      } else if (msg.fieldGuessed == 'artist') {
         correctGuesses[msg.playerId]![1] = true;
         players[msg.playerId]?.score += 1;
       }
@@ -157,7 +157,7 @@ class TrackStarService extends ChangeNotifier {
       throw Error();
     } else {
       response.existingPlayers.forEach((key, value) {
-        players[key] = Player(value);
+        players[int.parse(key)] = Player(value);
       });
       return response;
     }
@@ -252,7 +252,7 @@ class JoinRoomRequest {
 class JoinRoomResponse extends Response {
   final String status;
   final int playerId;
-  final Map<int, String> existingPlayers;
+  final Map<String, String> existingPlayers;
 
   JoinRoomResponse(this.status, this.playerId, this.existingPlayers);
   factory JoinRoomResponse.fromJson(Map<String, dynamic> json) =>
@@ -323,7 +323,8 @@ class TrackStarted extends Response {
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class TrackEnded extends Response {
-  final String trackName, trackArtists;
+  final String trackName;
+  final List<String> trackArtists;
   final int waitTime;
   TrackEnded(this.trackName, this.trackArtists, this.waitTime);
   factory TrackEnded.fromJson(Map<String, dynamic> json) =>

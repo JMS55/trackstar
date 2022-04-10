@@ -27,59 +27,158 @@ class GamePage extends StatelessWidget {
         builder: (context, trackStarService, child) => trackStarService
                     .trackName ==
                 null
-            ? TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Enter Guess (Song Title or Artist)',
-                  border: UnderlineInputBorder(),
-                ),
-                keyboardType: TextInputType.text,
-                controller: textController,
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Guess (Song Title or Artist)',
+                      style: TextStyle(
+                        color: Color.fromARGB(255, 5, 6, 92),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Neumorphic(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: TextField(
+                        cursorColor: const Color.fromARGB(255, 5, 6, 92),
+                        style: const TextStyle(
+                          color: Color.fromARGB(255, 5, 6, 92),
+                          fontSize: 22,
+                        ),
+                        decoration:
+                            const InputDecoration.collapsed(hintText: ""),
+                        controller: textController,
+                      ),
+                    ),
+                  ),
+                ],
               )
             : Text(
                 'The song was ${trackStarService.trackName} by ${trackStarService.trackArtists}!'));
 
     Widget trackNumber = Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => Text(
-              trackStarService.trackNumber.toString(),
+              'Track ${trackStarService.trackNumber}/15',
+              style: const TextStyle(
+                color: Color.fromARGB(255, 5, 6, 92),
+                fontSize: 18,
+              ),
             ));
 
     Widget endTime = Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => CountdownTimer(
-              endTime: trackStarService.startTime + 1000 * 30,
-            ));
+            endTime: trackStarService.startTime + 1000 * 30,
+            endWidget: const Text('Track over',
+                style: TextStyle(
+                    color: Color.fromARGB(255, 5, 6, 92), fontSize: 18)),
+            textStyle: const TextStyle(
+                color: Color.fromARGB(255, 5, 6, 92), fontSize: 18)));
 
     Widget playersList = Consumer<TrackStarService>(
-        builder: (context, trackStarService, child) => ListView(
-              children: trackStarService.players.values
-                  .map((player) => Text('${player.userName}: ${player.score}'))
-                  .toList(),
-              shrinkWrap: true,
-            ));
+      builder: (context, trackStarService, child) => ListView.separated(
+        itemCount: trackStarService.players.length,
+        itemBuilder: (BuildContext context, int index) {
+          var player = trackStarService.players.values.elementAt(index);
+          return Text(
+            '${player.userName}: ${player.score}',
+            style: const TextStyle(
+              color: Color.fromARGB(255, 5, 6, 92),
+              fontSize: 18,
+            ),
+          );
+        },
+        separatorBuilder: (BuildContext context, int index) => const Divider(),
+        shrinkWrap: true,
+      ),
+    );
 
     Widget guessedTitle = Consumer<TrackStarService>(
-        builder: (context, trackStarService, child) => Text('Title',
-            style: trackStarService.guessedTitle
-                ? const TextStyle(color: Colors.green)
-                : const TextStyle(color: Colors.black)));
+        builder: (context, trackStarService, child) => Text(
+              'Title',
+              style: TextStyle(
+                color: trackStarService.guessedTitle
+                    ? const Color.fromARGB(255, 20, 148, 24)
+                    : const Color.fromARGB(255, 5, 6, 92),
+                fontSize: 18,
+              ),
+            ));
 
     Widget guessedArtist = Consumer<TrackStarService>(
-        builder: (context, trackStarService, child) => Text('Artist',
-            style: trackStarService.guessedArtist
-                ? const TextStyle(color: Colors.green)
-                : const TextStyle(color: Colors.black)));
+        builder: (context, trackStarService, child) => Text(
+              'Artist',
+              style: TextStyle(
+                color: trackStarService.guessedTitle
+                    ? const Color.fromARGB(255, 20, 148, 24)
+                    : const Color.fromARGB(255, 5, 6, 92),
+                fontSize: 18,
+              ),
+            ));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('TrackStar')),
       body: Center(
-          child: Column(children: [
-        Text(roomCode.toString()),
-        trackNumber,
-        endTime,
-        playersList,
-        guessedTitle,
-        guessedArtist,
-        displayText
-      ])),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Neumorphic(
+            style: NeumorphicStyle(
+              depth: 15,
+              boxShape: NeumorphicBoxShape.roundRect(
+                  const BorderRadius.all(Radius.circular(28))),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 84, horizontal: 36),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                FittedBox(
+                  fit: BoxFit.contain,
+                  child: RichText(
+                    text: TextSpan(
+                      text: 'Room Code ',
+                      style: const TextStyle(
+                        color: Color.fromARGB(255, 5, 6, 92),
+                        fontSize: 72,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: ' $roomCode ',
+                          style: const TextStyle(
+                            color: Color.fromARGB(255, 222, 228, 238),
+                            backgroundColor: Color.fromARGB(255, 5, 6, 92),
+                            fontSize: 72,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      trackNumber,
+                      endTime,
+                    ]),
+                playersList,
+                const SizedBox(height: 36),
+                displayText,
+                const SizedBox(height: 24),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  guessedTitle,
+                  const SizedBox(width: 24),
+                  guessedArtist
+                ])
+              ]),
+            ),
+          ),
+        ),
+      ),
       floatingActionButton: NeumorphicFloatingActionButton(
         style: NeumorphicTheme.currentTheme(context)
             .appBarTheme
