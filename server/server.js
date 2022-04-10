@@ -32,10 +32,14 @@ const rooms = new Map();
 const clients = new Map();
 
 function sendEachClientInRoom(room_id, json) {
+    sendEachClientInRoomAux(room_id, player => json);
+}
+
+function sendEachClientInRoomAux(room_id, make_json) {
     room = rooms.get(room_id);
     room.players.forEach((player, player_id) => {
         client = clients.get(player_id);
-        client.send(JSON.stringify(json));
+        client.send(JSON.stringify(make_json(player)));
     });
 }
 
@@ -98,12 +102,12 @@ wss.on("connection", ws => {
                     status: 'success',
                     player_id: joining_player.id
                 }));
-                sendEachClientInRoom(message.room_id, {
+                sendEachClientInRoomAux(message.room_id, player => ({
                     topic: 'player_joined',
                     room_id: room.id,
                     player_id: player.id,
                     player_name: player.name
-                });
+                }));
                 break;
             case 'leave_room':
                 rooms.get(message.room_id).players.delete(message.player_id);
@@ -112,11 +116,11 @@ wss.on("connection", ws => {
                     topic: 'leave_room_response',
                     status: 'success'
                 }));
-                sendEachClientInRoom(message.room_id, {
+                sendEachClientInRoomAux(message.room_id, player => ({
                     topic: 'player_left',
                     room_id: message.room.id,
                     player_id: player.id
-                });
+                }));
                 break;
             case 'start_game':
                 ws.send(JSON.stringify({
