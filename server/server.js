@@ -46,7 +46,7 @@ function sendEachClientInRoomAux(room_id, make_json) {
 }
 
 function playTrack(room_id) {
-    room = rooms.get(message.room_id);
+    room = rooms.get(room_id);
     room.state = 'track_playing';
     room.current_track = spotify.getRandomUnplayedTrack(room.played_track_urls);
     room.played_track_urls.push(room.current_track.preview_url);
@@ -122,11 +122,11 @@ wss.on("connection", ws => {
                     status: 'success'
                 }));
                 if (room.players.size == 0) {
-                    rooms.delete(message.room_id);
+                    rooms.delete(room.id);
                 } else {
-                    sendEachClientInRoomAux(message.room_id, player => ({
+                    sendEachClientInRoomAux(room.id, player => ({
                         topic: 'player_left',
-                        room_id: message.room.id,
+                        room_id: room.id,
                         player_id: player.id
                     }));
                 }
