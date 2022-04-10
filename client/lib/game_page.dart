@@ -23,6 +23,21 @@ class GamePage extends StatelessWidget {
 
     int roomCode = trackStarService.roomId!;
 
+    Widget displayText = Consumer<TrackStarService>(
+        builder: (context, trackStarService, child) => trackStarService
+                    .trackName ==
+                null
+            ? TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Enter Guess (Song Title or Artist)',
+                  border: UnderlineInputBorder(),
+                ),
+                keyboardType: TextInputType.text,
+                controller: textController,
+              )
+            : Text(
+                'The song was ${trackStarService.trackName} by ${trackStarService.trackArtists}!'));
+
     Widget trackNumber = Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => Text(
               trackStarService.trackNumber.toString(),
@@ -53,13 +68,6 @@ class GamePage extends StatelessWidget {
                 ? const TextStyle(color: Colors.green)
                 : const TextStyle(color: Colors.black)));
 
-    Widget answers = Consumer<TrackStarService>(
-        builder: (context, trackStarService, child) => Text(trackStarService
-                    .trackName ==
-                null
-            ? ''
-            : 'The song was ${trackStarService.trackName} by ${trackStarService.trackArtists}!'));
-
     return Scaffold(
       appBar: AppBar(title: const Text('TrackStar')),
       body: Center(
@@ -70,16 +78,7 @@ class GamePage extends StatelessWidget {
         playersList,
         guessedTitle,
         guessedArtist,
-        trackStarService.trackName == null
-            ? TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Enter Guess (Song Title or Artist)',
-                  border: UnderlineInputBorder(),
-                ),
-                keyboardType: TextInputType.text,
-                controller: textController,
-              )
-            : answers,
+        displayText
       ])),
       floatingActionButton: NeumorphicFloatingActionButton(
         style: NeumorphicTheme.currentTheme(context)
