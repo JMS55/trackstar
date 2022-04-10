@@ -110,7 +110,6 @@ async function fillMissingUrls() {
             const preview_url = preview_url_encoded.replace('%3A', ':').replace(/%2F/g, '/')
             track.preview_url = preview_url;
         } catch (error) {
-            console.log(error);
         } finally {
             clearTimeout(timeout);
         }
@@ -121,9 +120,7 @@ async function pullTracks(playlist_id, token) {
     spotify.setAccessToken(token);
     await pullTracksAux(playlist_id, token, 0);
     await fillMissingUrls();
-    console.log(tracks.length);
     removeNullTracks();
-    console.log(tracks.length);
 }
 
 async function pullTracksAux(playlist_id, token, offset) {
