@@ -87,7 +87,12 @@ class TrackStarService extends ChangeNotifier {
       } else if (sortedGuesses.length >= 3) {
         players[sortedGuesses[2]]?.score += 2;
       }
-      correctGuesses = {};
+
+      print(correctGuesses);
+      correctGuesses.forEach((key, value) {
+        correctGuesses[key] = [false, false, value[2]];
+      });
+      print(correctGuesses);
 
       notifyListeners();
     });
@@ -151,6 +156,9 @@ class TrackStarService extends ChangeNotifier {
     if (response.status != 'success') {
       throw Error();
     } else {
+      response.existingPlayers.forEach((key, value) {
+        players[key] = Player(value);
+      });
       return response;
     }
   }
@@ -197,6 +205,7 @@ class TrackStarService extends ChangeNotifier {
     await playerJoinedSubscription.cancel();
     await playerLeftSubscription.cancel();
     await trackStartedSubscription.cancel();
+    await trackEndedSubscription.cancel();
     await guessResponseSubscription.cancel();
     await correctResponseSubscription.cancel();
     await roundOverSubscription.cancel();
@@ -243,8 +252,9 @@ class JoinRoomRequest {
 class JoinRoomResponse extends Response {
   final String status;
   final int playerId;
+  final Map<int, String> existingPlayers;
 
-  JoinRoomResponse(this.status, this.playerId);
+  JoinRoomResponse(this.status, this.playerId, this.existingPlayers);
   factory JoinRoomResponse.fromJson(Map<String, dynamic> json) =>
       _$JoinRoomResponseFromJson(json);
 }
