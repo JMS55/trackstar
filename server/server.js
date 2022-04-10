@@ -137,6 +137,7 @@ wss.on("connection", ws => {
                     status: 'success'
                 }));
                 playTrack(message.room_id);
+                break;
             case 'make_guess':
                 var current_track = rooms.get(message.room_id).current_track
                 if (spotify.isCorrectTitle(current_track, message.guess)) {
@@ -158,6 +159,7 @@ wss.on("connection", ws => {
                         time_of_guess: message.time_of_guess
                     })
                 }
+                break;
             default:
                 console.log('Invalid topic: ' + message.topic);
         }
