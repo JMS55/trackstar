@@ -114,7 +114,7 @@ class GamePage extends StatelessWidget {
         builder: (context, trackStarService, child) => Text(
               'Artist',
               style: TextStyle(
-                color: trackStarService.guessedTitle
+                color: trackStarService.guessedArtist
                     ? const Color.fromARGB(255, 20, 148, 24)
                     : const Color.fromARGB(255, 5, 6, 92),
                 fontSize: 18,

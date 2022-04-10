@@ -41,6 +41,7 @@ class _EnterNamePageState extends State<EnterNamePage> {
           trackStarService.playerId = response.creatorId;
           trackStarService.players[response.creatorId] =
               Player(trackStarService.userName);
+          Navigator.pop(context);
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -49,6 +50,7 @@ class _EnterNamePageState extends State<EnterNamePage> {
         } else {
           JoinRoomResponse response = await trackStarService.joinRoom();
           trackStarService.playerId = response.playerId;
+          Navigator.pop(context);
           Navigator.push(
             context,
             MaterialPageRoute(
