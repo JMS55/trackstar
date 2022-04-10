@@ -58,8 +58,8 @@ class GamePage extends StatelessWidget {
         builder: (context, trackStarService, child) => Text(trackStarService
                     .trackName ==
                 null
-            ? 'The song was $trackStarService.trackTitle by $trackStarService.trackArtists!'
-            : ''));
+            ? ''
+            : 'The song was ${trackStarService.trackName} by ${trackStarService.trackArtists}!'));
 
     return Scaffold(
       appBar: AppBar(title: const Text('TrackStar')),

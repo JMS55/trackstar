@@ -24,6 +24,7 @@ class TrackStarService extends ChangeNotifier {
   late StreamSubscription<TrackEnded> trackEndedSubscription;
   late StreamSubscription<MakeGuessResponse> guessResponseSubscription;
   late StreamSubscription<CorrectGuessMade> correctResponseSubscription;
+  late StreamSubscription<RoundOver> roundOverSubscription;
 
   late String userName;
   late String? trackName, trackArtists;
@@ -84,6 +85,7 @@ class TrackStarService extends ChangeNotifier {
       } else if (sortedGuesses.length >= 3) {
         players[sortedGuesses[2]]?.score += 2;
       }
+      correctGuesses = {};
     });
 
     guessResponseSubscription =
@@ -106,17 +108,23 @@ class TrackStarService extends ChangeNotifier {
       if (msg.fieldGuessed == 'title' &&
           correctGuesses[msg.playerId]![0] != true) {
         correctGuesses[msg.playerId]![0] = true;
-        players[playerId]?.score += 1;
+        players[msg.playerId]?.score += 1;
       } else if (msg.fieldGuessed == 'artist' &&
           correctGuesses[msg.playerId]![1] != true) {
         correctGuesses[msg.playerId]![1] = true;
-        players[playerId]?.score += 1;
+        players[msg.playerId]?.score += 1;
       }
 
       if (correctGuesses[msg.playerId]![0] &&
           correctGuesses[msg.playerId]![1]) {
         correctGuesses[msg.playerId]![2] = msg.timeOfGuess;
       }
+    });
+
+    roundOverSubscription = responseStream<RoundOver>().listen((RoundOver msg) {
+      trackNumber = -1;
+      startTime = 0;
+      players.forEach((id, player) => player.score = 0);
     });
   }
 
@@ -183,6 +191,8 @@ class TrackStarService extends ChangeNotifier {
     await trackStartedSubscription.cancel();
     await guessResponseSubscription.cancel();
     await correctResponseSubscription.cancel();
+    await roundOverSubscription.cancel();
+
     ws.sink.close();
 
     super.dispose();
