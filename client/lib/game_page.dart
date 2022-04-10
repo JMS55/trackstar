@@ -23,45 +23,48 @@ class GamePage extends StatelessWidget {
 
     int roomCode = trackStarService.roomId!;
 
-    Widget displayText = Consumer<TrackStarService>(
-        builder: (context, trackStarService, child) => trackStarService
-                    .trackName ==
-                null
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Text(
-                      'Guess (Song Title or Artist)',
-                      style: TextStyle(
-                        color: Color.fromARGB(255, 5, 6, 92),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Neumorphic(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: TextField(
-                        cursorColor: const Color.fromARGB(255, 5, 6, 92),
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 5, 6, 92),
-                          fontSize: 22,
-                        ),
-                        decoration:
-                            const InputDecoration.collapsed(hintText: ""),
-                        controller: textController,
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : Text(
-                'The song was ${trackStarService.trackName} by ${trackStarService.trackArtists}!'));
+    Widget guesser = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Padding(
+          padding: EdgeInsets.only(left: 8),
+          child: Text(
+            'Guess (Song Title or Artist)',
+            style: TextStyle(
+              color: Color.fromARGB(255, 5, 6, 92),
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Neumorphic(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: TextField(
+              cursorColor: const Color.fromARGB(255, 5, 6, 92),
+              style: const TextStyle(
+                color: Color.fromARGB(255, 5, 6, 92),
+                fontSize: 22,
+              ),
+              decoration: const InputDecoration.collapsed(hintText: ""),
+              controller: textController,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    Widget displayText =
+        Consumer<TrackStarService>(builder: (context, trackStarService, child) {
+      if (trackStarService.trackName == null) {
+        return guesser;
+      } else {
+        return Text(
+            'That song was ${trackStarService.trackName} by ${trackStarService.trackArtists!.join(', ')}!');
+      }
+    });
 
     Widget trackNumber = Consumer<TrackStarService>(
         builder: (context, trackStarService, child) => Text(
@@ -165,7 +168,10 @@ class GamePage extends StatelessWidget {
                       trackNumber,
                       endTime,
                     ]),
-                playersList,
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: playersList,
+                ),
                 const SizedBox(height: 36),
                 displayText,
                 const SizedBox(height: 24),
