@@ -83,10 +83,12 @@ class LobbyPage extends StatelessWidget {
     ];
     if (isRoomCreator) {
       col.add(const SizedBox(height: 48));
-      col.add(button('Start Game', () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => GamePage()),
-                        ))));
+      col.add(button(
+          'Start Game',
+          () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => GamePage()),
+              )));
     }
 
     return Scaffold(
