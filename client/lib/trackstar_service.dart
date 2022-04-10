@@ -216,6 +216,7 @@ class StartGameResponse extends Response {
 @JsonSerializable(fieldRename: FieldRename.snake)
 class MakeGuessRequest {
   String topic = 'make_guess';
+  int timeOfGuess = DateTime.now().millisecondsSinceEpoch;
   int roomId, playerId;
   String guess;
   MakeGuessRequest(this.roomId, this.playerId, this.guess);
