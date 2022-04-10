@@ -24,7 +24,7 @@ class TrackStarService extends ChangeNotifier {
   late String userName;
   late int playerId;
   int? roomId;
-  int trackNumber = 0, startTime = 0;
+  int trackNumber = -1, startTime = 0;
   bool guessedTitle = false, guessedArtist = false;
   AudioPlayer audioPlayer = AudioPlayer(mode: PlayerMode.LOW_LATENCY);
   Map<int, Player> players = {};
