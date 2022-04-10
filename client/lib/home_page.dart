@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'trackstar_service.dart';
 import 'enter_code_page.dart';
 import 'enter_name_page.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key, required this.trackStarService}) : super(key: key);
-
-  final TrackStarService trackStarService;
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +23,6 @@ class HomePage extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                           builder: (context) => EnterNamePage(
-                                trackStarService: trackStarService,
                                 isCreatingRoom: true,
                               )),
                     );
@@ -37,10 +33,7 @@ class HomePage extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (context) => EnterCodePage(
-                                trackStarService: trackStarService,
-                              )),
+                      MaterialPageRoute(builder: (context) => EnterCodePage()),
                     );
                   },
                 ),

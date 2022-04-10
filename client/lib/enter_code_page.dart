@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:trackstar/enter_name_page.dart';
 import 'trackstar_service.dart';
 
 class EnterCodePage extends StatelessWidget {
-  EnterCodePage({Key? key, required this.trackStarService}) : super(key: key);
+  EnterCodePage({Key? key}) : super(key: key);
 
-  final TrackStarService trackStarService;
   final textController = TextEditingController();
 
   @override
@@ -33,13 +33,14 @@ class EnterCodePage extends StatelessWidget {
           child: const Icon(Icons.navigate_next_rounded),
           onPressed: () async {
             if (textController.text != '') {
+              TrackStarService trackStarService =
+                  Provider.of<TrackStarService>(context, listen: false);
               trackStarService.roomId = int.parse(textController.text);
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => EnterNamePage(
-                          trackStarService: trackStarService,
-                          isCreatingRoom: false)));
+                      builder: (context) =>
+                          EnterNamePage(isCreatingRoom: false)));
             }
           }),
     );

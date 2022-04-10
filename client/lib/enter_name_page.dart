@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:trackstar/lobby_page.dart';
 import 'trackstar_service.dart';
 
 class EnterNamePage extends StatelessWidget {
-  EnterNamePage(
-      {Key? key, required this.trackStarService, required this.isCreatingRoom})
-      : super(key: key);
+  EnterNamePage({Key? key, required this.isCreatingRoom}) : super(key: key);
 
-  final TrackStarService trackStarService;
   final textController = TextEditingController();
   final bool isCreatingRoom;
 
@@ -33,6 +31,8 @@ class EnterNamePage extends StatelessWidget {
           child: const Icon(Icons.navigate_next_rounded),
           onPressed: () async {
             if (textController.text != '') {
+              TrackStarService trackStarService =
+                  Provider.of<TrackStarService>(context, listen: false);
               trackStarService.userName = textController.text;
 
               if (isCreatingRoom) {
@@ -42,16 +42,15 @@ class EnterNamePage extends StatelessWidget {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => LobbyPage(
-                              trackStarService: trackStarService,
+                        builder: (context) => const LobbyPage(
                               isRoomCreator: true,
                             )));
               } else {
+                trackStarService.joinRoom();
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => LobbyPage(
-                              trackStarService: trackStarService,
+                        builder: (context) => const LobbyPage(
                               isRoomCreator: false,
                             )));
               }
