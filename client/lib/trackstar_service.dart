@@ -197,6 +197,7 @@ class TrackStarService extends ChangeNotifier {
     await playerJoinedSubscription.cancel();
     await playerLeftSubscription.cancel();
     await trackStartedSubscription.cancel();
+    await trackEndedSubscription.cancel();
     await guessResponseSubscription.cancel();
     await correctResponseSubscription.cancel();
     await roundOverSubscription.cancel();
