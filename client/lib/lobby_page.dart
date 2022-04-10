@@ -103,10 +103,12 @@ class _LobbyPageState extends State<LobbyPage> {
 
     TrackStarService trackStarService = Provider.of<TrackStarService>(context);
     if (trackStarService.trackNumber == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => GamePage()),
-      );
+      Future.delayed(Duration.zero, () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => GamePage()),
+        );
+      });
     }
 
     return Scaffold(
