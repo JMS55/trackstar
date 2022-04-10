@@ -34,14 +34,10 @@ const rooms = new Map();
 const clients = new Map();
 
 function sendEachClientInRoom(room_id, json) {
-    sendEachClientInRoomAux(room_id, player => json);
-}
-
-function sendEachClientInRoomAux(room_id, make_json) {
     room = rooms.get(room_id);
-    room.players.forEach((player, player_id) => {
+    room.players.forEach((_, player_id) => {
         client = clients.get(player_id);
-        client.send(JSON.stringify(make_json(player)));
+        client.send(JSON.stringify(json));
     });
 }
 
@@ -112,18 +108,19 @@ wss.on("connection", ws => {
             case 'join_room':
                 joining_player = new Player(message.player_name);
                 room = rooms.get(message.room_id);
-                room.players.set(joining_player.id, joining_player);
                 clients.set(joining_player.id, ws);
                 ws.send(JSON.stringify({
                     topic: 'join_room_response',
                     status: 'success',
-                    player_id: joining_player.id
+                    player_id: joining_player.id,
+                    existing_player_ids: room.players.keys
                 }));
-                sendEachClientInRoomAux(message.room_id, player => ({
+                room.players.set(joining_player.id, joining_player);
+                sendEachClientInRoom(message.room_id, {
                     topic: 'player_joined',
-                    player_id: player.id,
-                    player_name: player.name
-                }));
+                    player_id: joining_player.id,
+                    player_name: joining_player.name
+                });
                 break;
             case 'leave_room':
                 var room = rooms.get(message.room_id);
@@ -136,11 +133,11 @@ wss.on("connection", ws => {
                 if (room.players.size == 0) {
                     rooms.delete(room.id);
                 } else {
-                    sendEachClientInRoomAux(room.id, player => ({
+                    sendEachClientInRoom(room.id, {
                         topic: 'player_left',
                         room_id: room.id,
-                        player_id: player.id
-                    }));
+                        player_id: message.player_id
+                    });
                 }
                 break;
             case 'start_game':
