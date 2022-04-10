@@ -108,13 +108,14 @@ wss.on("connection", ws => {
             case 'join_room':
                 joining_player = new Player(message.player_name);
                 room = rooms.get(message.room_id);
-                room.players.set(joining_player.id, joining_player);
                 clients.set(joining_player.id, ws);
                 ws.send(JSON.stringify({
                     topic: 'join_room_response',
                     status: 'success',
-                    player_id: joining_player.id
+                    player_id: joining_player.id,
+                    existing_player_ids: room.players.keys
                 }));
+                room.players.set(joining_player.id, joining_player);
                 sendEachClientInRoom(message.room_id, {
                     topic: 'player_joined',
                     player_id: joining_player.id,
