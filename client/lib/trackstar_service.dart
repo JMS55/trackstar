@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -25,10 +26,13 @@ class TrackStarService extends ChangeNotifier {
   int? roomId;
   int trackNumber = 0, startTime = 0;
   bool guessedTitle = false, guessedArtist = false;
+  AudioPlayer audioPlayer = AudioPlayer(mode: PlayerMode.LOW_LATENCY);
   Map<int, Player> players = {};
 
   TrackStarService() {
     responses = ws.stream.asBroadcastStream();
+
+    audioPlayer.setReleaseMode(ReleaseMode.STOP);
 
     playerJoinedSubscription =
         responseStream<PlayerJoined>().listen((PlayerJoined msg) {
@@ -43,11 +47,12 @@ class TrackStarService extends ChangeNotifier {
     });
 
     trackStartedSubscription =
-        responseStream<TrackStarted>().listen((TrackStarted msg) {
+        responseStream<TrackStarted>().listen((TrackStarted msg) async {
       trackNumber = msg.trackNumber;
       startTime = msg.startTime;
       guessedArtist = false;
       guessedTitle = false;
+      await audioPlayer.play(msg.trackUrl);
       notifyListeners();
     });
 
@@ -114,6 +119,9 @@ class TrackStarService extends ChangeNotifier {
 
   @override
   Future<void> dispose() async {
+    await audioPlayer.stop();
+    await audioPlayer.release();
+
     if (roomId != null) {
       await leaveRoom();
     }
