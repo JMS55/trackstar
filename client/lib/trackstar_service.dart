@@ -11,10 +11,14 @@ class TrackStarService extends ChangeNotifier {
   late Stream<dynamic> responses;
   late StreamSubscription<PlayerJoined> playerJoinedSubscription;
   late StreamSubscription<PlayerLeft> playerLeftSubscription;
+  late StreamSubscription<TrackStarted> trackStartedSubscription;
+  late StreamSubscription<MakeGuessResponse> guessResponseSubscription;
 
   late String userName;
-  int? roomId;
   late int playerId;
+  int? roomId;
+  int trackNumber = 0, startTime = 0;
+  bool guessedTitle = false, guessedArtist = false;
   Map<int, String> players = {};
 
   TrackStarService() {
@@ -30,6 +34,26 @@ class TrackStarService extends ChangeNotifier {
         responseStream<PlayerLeft>().listen((PlayerLeft msg) {
       players.remove(msg.playerId);
       notifyListeners();
+    });
+
+    trackStartedSubscription =
+        responseStream<TrackStarted>().listen((TrackStarted msg) {
+      trackNumber = msg.trackNumber;
+      startTime = msg.startTime;
+      guessedArtist = false;
+      guessedTitle = false;
+      notifyListeners();
+    });
+
+    guessResponseSubscription =
+        responseStream<MakeGuessResponse>().listen((MakeGuessResponse msg) {
+      if (msg.result == 'correct_artist') {
+        guessedArtist = true;
+        notifyListeners();
+      } else if (msg.result == 'correct_title') {
+        guessedTitle = true;
+        notifyListeners();
+      }
     });
   }
 
