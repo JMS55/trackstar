@@ -12,7 +12,9 @@ class Player {
 }
 
 class GamePage extends StatelessWidget {
-  const GamePage({Key? key}) : super(key: key);
+  GamePage({Key? key}) : super(key: key);
+
+  final textController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +62,15 @@ class GamePage extends StatelessWidget {
         endTime,
         playersList,
         guessedTitle,
-        guessedArtist
+        guessedArtist,
+        TextField(
+          decoration: const InputDecoration(
+            labelText: 'Enter Guess (Song Title or Artist)',
+            border: UnderlineInputBorder(),
+          ),
+          keyboardType: TextInputType.text,
+          controller: textController,
+        )
       ])),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trackstar/trackstar_service.dart';
+import 'package:trackstar/game_page.dart';
 
 class LobbyPage extends StatelessWidget {
   const LobbyPage({Key? key, required this.isRoomCreator}) : super(key: key);
@@ -22,10 +23,12 @@ class LobbyPage extends StatelessWidget {
         child: isRoomCreator
             ? Column(children: [
                 playersList,
-                const ElevatedButton(
-                  child: Text('Start Game'),
-                  onPressed: null,
-                )
+                ElevatedButton(
+                    child: const Text('Start Game'),
+                    onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => GamePage()),
+                        ))
               ])
             : playersList,
       ),
