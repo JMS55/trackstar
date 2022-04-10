@@ -84,7 +84,7 @@ wss.on("connection", ws => {
                 ws.send(JSON.stringify({
                     topic: 'create_room_response',
                     status: 'success',
-                    room_id: message.room.id,
+                    room_id: room.id,
                     creator_id: room.creator_id
                 }));
                 break;
@@ -100,7 +100,7 @@ wss.on("connection", ws => {
                 }));
                 sendEachClientInRoom(message.room_id, {
                     topic: 'player_joined',
-                    room_id: message.room.id,
+                    room_id: room.id,
                     player_id: player.id,
                     player_name: player.name
                 });
