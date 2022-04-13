@@ -1,6 +1,5 @@
-const util = require('util');
-const fetch = require('node-fetch');
-const Spotify = require('spotify-web-api-node');
+import fetch from 'node-fetch';
+import Spotify from 'spotify-web-api-node';
 
 const TRACK_PULL_LIMIT = 100;
 const WEB_SCRAPE_TIMEOUT = 500;
@@ -67,20 +66,12 @@ function getRandomTrack() {
     return tracks[Math.floor(Math.random() * tracks.length)];
 }
 
-function getRandomUnplayedTrack(played_track_urls) {
+function getRandomUnplayedTrack(played_tracks) {
     var track;
     do {
         track = getRandomTrack();
-    } while (played_track_urls.has(track.preview_url))
+    } while (played_tracks.has(track))
     return track;
-}
-
-function removeItem(arr, value) {
-    var index = arr.indexOf(value);
-    if (index > -1) {
-        arr.splice(index, 1);
-    }
-    return arr;
 }
 
 function removeNullTracks() {
@@ -148,4 +139,4 @@ const playlist_id = process.env.TS_PLAYLIST_ID;
 
 pullTracks(playlist_id, auth_token);
 
-module.exports = { isCorrectTitle, isCorrectArtist, getRandomUnplayedTrack };
+export default { isCorrectTitle, isCorrectArtist, getRandomUnplayedTrack };
