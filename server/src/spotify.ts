@@ -1,29 +1,28 @@
 import fetch from 'node-fetch';
 import Spotify from 'spotify-web-api-node';
+import { sys } from 'typescript';
 
 const TRACK_PULL_LIMIT = 100;
 const WEB_SCRAPE_TIMEOUT = 500;
 
-class Track {
-    constructor(id, preview_url, title, authors) {
-        this.id = id;
-        this.preview_url = preview_url;
-        this.title = title;
-        this.artists = artists;
-    }
+export interface Track {
+    id: string,
+    preview_url: string | null,
+    title: string,
+    artists: Array<string>
 }
 
 const spotify = new Spotify();
-var tracks = new Array();
+var tracks:Track[] = [];
 
-function isCorrectTitle(track, guess) {
+export function isCorrectTitle(track: Track, guess: string) {
     return closeEnough(simplifyString(simplifyTitle(track.title)), simplifyString(guess));
 }
 
-function isCorrectArtist(track, guess) {
-    guessSimple = simplifyString(guess);
+export function isCorrectArtist(track: Track, guess: string) {
+    const guessSimple = simplifyString(guess);
     for (const artist of track.artists) {
-        artistSimple = simplifyString(artist);
+        const artistSimple = simplifyString(artist);
         if (closeEnough(artistSimple, guessSimple) || closeEnough(artist, 'the' + guessSimple)) {
             return true;
         }
@@ -31,13 +30,13 @@ function isCorrectArtist(track, guess) {
     return false;
 }
 
-function simplifyString(str) {
+function simplifyString(str: string) {
     return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function simplifyTitle(title) {
+function simplifyTitle(title: string) {
     [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/].forEach(regex => {
-        found = title.match(regex);
+        const found = title.match(regex);
         if (found) {
             title = found[1];
         }
@@ -45,7 +44,7 @@ function simplifyTitle(title) {
     return title;
 }
 
-function closeEnough(s1, s2) {
+function closeEnough(s1: string, s2: string) {
     var m = s1.length, n = s2.length, count = 0, i = 0, j = 0;
     if (Math.abs(m - n) > 1) return false;
     while (i < m && j < n) {
@@ -66,16 +65,16 @@ function getRandomTrack() {
     return tracks[Math.floor(Math.random() * tracks.length)];
 }
 
-function getRandomUnplayedTrack(played_tracks) {
+export function getRandomUnplayedTrack(played_tracks: Set<Track>) {
     var track;
     do {
         track = getRandomTrack();
-    } while (played_tracks.has(track))
+    } while (played_tracks.has(track) && track.preview_url) // dunno why this can still be null but it do
     return track;
 }
 
 function removeNullTracks() {
-    const goodTracks = new Array();
+    const goodTracks:Track[] = [];
     tracks.forEach(track => {
         if (track.preview_url) {
             goodTracks.push(track)
@@ -107,14 +106,14 @@ async function fillMissingUrls() {
     };
 }
 
-async function pullTracks(playlist_id, token) {
+async function pullTracks(playlist_id: string, token: string) {
     spotify.setAccessToken(token);
     await pullTracksAux(playlist_id, token, 0);
     await fillMissingUrls();
     removeNullTracks();
 }
 
-async function pullTracksAux(playlist_id, token, offset) {
+async function pullTracksAux(playlist_id: string, token: string, offset: number) {
     const data = await spotify.getPlaylistTracks(playlist_id, {
         offset: offset,
         limit: TRACK_PULL_LIMIT,
@@ -123,11 +122,13 @@ async function pullTracksAux(playlist_id, token, offset) {
     const items = data.body.items;
     items.forEach(item => {
         const track = item.track;
-        artists = new Array();
-        track.artists.forEach(artist => {
-            artists.push(artist.name);
-        })
-        tracks.push(new Track(track.id, track.preview_url, track.name, artists));
+        const artists:string[] = track.artists.map(artist => artist.name);
+        tracks.push({
+            id: track.id,
+            preview_url: track.preview_url,
+            title: track.name,
+            artists: artists
+        });
     });
     if (items.length == TRACK_PULL_LIMIT) {
         await pullTracksAux(playlist_id, token, offset + TRACK_PULL_LIMIT);
@@ -136,7 +137,9 @@ async function pullTracksAux(playlist_id, token, offset) {
 
 const auth_token = process.env.TS_SPOTIFY_AUTH_TOKEN;
 const playlist_id = process.env.TS_PLAYLIST_ID;
+if (!(auth_token || playlist_id)) {
+    console.error("Auth token and playlist id are not provided");
+    sys.exit(1);
+}
+pullTracks(playlist_id!, auth_token!);
 
-pullTracks(playlist_id, auth_token);
-
-export default { isCorrectTitle, isCorrectArtist, getRandomUnplayedTrack };
