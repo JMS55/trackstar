@@ -20,7 +20,6 @@ class App extends StatelessWidget {
       themeMode: ThemeMode.light,
       theme: NeumorphicThemeData(
         baseColor: Color.fromARGB(255, 231, 235, 238),
-        accentColor: Color.fromARGB(255, 49, 69, 106),
         intensity: 0.8,
         depth: 8,
       ),
