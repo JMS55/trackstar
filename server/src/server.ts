@@ -6,24 +6,38 @@ import { Literal, Record, Union, Number, String } from 'runtypes';
 const DEBUG = true;
 const TRACK_PLAY_LENGTH = 30;
 
+const enum Result {
+    TITLE = 'correct_title',
+    ARTIST = 'correct_artist',
+    INCORRECT = 'incorrect'
+}
+
+const enum Topic {
+    PLAYERS_CHANGED = 'players_changed',
+    GAME_STARTED = 'game_started',
+    TRACK_INFO = 'track_info',
+    GUESS_MADE = 'guess_made',
+    START_GAME_COMMAND = 'start_game_command',
+    MAKE_GUESS_COMMAND = 'make_guess_command'
+}
+
 // SERVER->CLIENT MESSAGES
-// ** also note that the string literals in the 'topic' field have to be updated in the code
-//    if they're changed.
+
 type ServerWSMessage = WSPlayersChanged | WSGameStarted | WSTrackInfo | WSGuessMade;
 
 interface WSPlayersChanged {
-    topic: 'players_changed',
+    topic: Topic.PLAYERS_CHANGED,
     players: string[]
 }
 
 interface WSGameStarted {
-    topic: 'game_started',
+    topic: Topic.GAME_STARTED,
     time_between_tracks: number,
     tracks_per_round: number
 }
 
 interface WSTrackInfo {
-    topic: 'track_info',
+    topic: Topic.TRACK_INFO,
     url: string,
     title: string,
     aritsts: string[],
@@ -32,31 +46,24 @@ interface WSTrackInfo {
 }
 
 interface WSGuessMade {
-    topic: 'guess_made',
+    topic: Topic.GUESS_MADE,
     player: string,
     result: Result,
     time_of_guess: number
 };
-
-const enum Result {
-    TITLE = 'correct_title',
-    ARTIST = 'correct_artist',
-    INCORRECT = 'incorrect'
-}
-
 
 // CLIENT->SERVER MESSAGES
 // these look a little different because they're validated at runtime, 
 // but everything is the same generally
 
 const WSStartGame = Record({
-    topic: Literal('start_game_command'),
+    topic: Literal(Topic.START_GAME_COMMAND),
     tracks_per_round: Number,
     time_between_tracks: Number
 });
 
 const WSMakeGuess = Record({
-    topic: Literal('make_guess_command'),
+    topic: Literal(Topic.MAKE_GUESS_COMMAND),
     guess: String,
     time_of_guess: Number
 })
@@ -103,7 +110,7 @@ class Room {
 
     notifyPlayersChanged() {
         this.sendAll({
-            topic: 'players_changed',
+            topic: Topic.PLAYERS_CHANGED,
             players: this.players.map(player => player.name)
         });
     }
@@ -127,7 +134,7 @@ class Room {
             played_tracks: new Set()
         }
         this.sendAll({
-            topic: 'game_started',
+            topic: Topic.GAME_STARTED,
             time_between_tracks: time_between_tracks,
             tracks_per_round: tracks_per_round
         });
@@ -140,7 +147,7 @@ class Room {
         this.game_info!.track = track;
         this.game_info!.played_tracks.add(track);
         this.sendAll({
-            topic: 'track_info',
+            topic: Topic.TRACK_INFO,
             url: track.preview_url!,
             title: track.title,
             aritsts: track.artists,
@@ -166,7 +173,7 @@ class Room {
             result = Result.INCORRECT;
         }
         this.sendAll({
-            topic: 'guess_made',
+            topic: Topic.GUESS_MADE,
             player: player.name,
             result: result,
             time_of_guess: time_of_guess
@@ -176,7 +183,6 @@ class Room {
 
 function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player] {
     DEBUG && console.log('Client connected with URL %s', request_url);
-    //const { pathname } = new URL(request_url);
     const [room_id, player_name] = request_url.slice(1).split('/');
     const new_player: Player = {
         client: ws,

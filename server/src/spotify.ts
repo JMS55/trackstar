@@ -137,7 +137,7 @@ async function pullTracksAux(playlist_id: string, token: string, offset: number)
 
 const auth_token = process.env.TS_SPOTIFY_AUTH_TOKEN;
 const playlist_id = process.env.TS_PLAYLIST_ID;
-if (!(auth_token || playlist_id)) {
+if (!(auth_token && playlist_id)) {
     console.error("Auth token and playlist id are not provided");
     sys.exit(1);
 }
