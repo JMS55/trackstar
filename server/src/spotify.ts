@@ -1,27 +1,14 @@
 import fetch from 'node-fetch';
 import Spotify from 'spotify-web-api-node';
-import { sys } from 'typescript';
+import pkg from 'typescript'; const { sys } = pkg;
+import fs from 'fs';
+import { Track } from './tracks';
 
 const TRACK_PULL_LIMIT = 100;
 const WEB_SCRAPE_TIMEOUT = 500;
 
-export interface Track {
-    id: string,
-    preview_url: string | null,
-    title: string,
-    artists: Array<string>
-}
-
 const spotify = new Spotify();
 var tracks:Track[] = [];
-
-export function getRandomUnplayedTrack(played_tracks: Set<Track>) {
-    var track;
-    do {
-        track = tracks[Math.floor(Math.random() * tracks.length)];
-    } while (played_tracks.has(track))
-    return track;
-}
 
 function removeNullTracks() {
     const goodTracks:Track[] = [];
@@ -56,14 +43,7 @@ async function fillMissingUrls() {
     };
 }
 
-async function pullTracks(playlist_id: string, token: string) {
-    spotify.setAccessToken(token);
-    await pullTracksAux(playlist_id, token, 0);
-    await fillMissingUrls();
-    removeNullTracks();
-}
-
-async function pullTracksAux(playlist_id: string, token: string, offset: number) {
+async function pullTracks(playlist_id: string, token: string, offset: number) {
     const data = await spotify.getPlaylistTracks(playlist_id, {
         offset: offset,
         limit: TRACK_PULL_LIMIT,
@@ -81,15 +61,22 @@ async function pullTracksAux(playlist_id: string, token: string, offset: number)
         });
     });
     if (items.length == TRACK_PULL_LIMIT) {
-        await pullTracksAux(playlist_id, token, offset + TRACK_PULL_LIMIT);
+        await pullTracks(playlist_id, token, offset + TRACK_PULL_LIMIT);
     }
 }
 
-const auth_token = process.env.TS_SPOTIFY_AUTH_TOKEN;
-const playlist_id = process.env.TS_PLAYLIST_ID;
-if (!(auth_token && playlist_id)) {
-    console.error("Auth token and playlist id are not provided");
+async function updateCache(playlist_id: string, access_token: string) {
+    spotify.setAccessToken(access_token);
+    await pullTracks(playlist_id, access_token, 0);
+    await fillMissingUrls();
+    removeNullTracks();
+    fs.writeFileSync('tracks.json', JSON.stringify(tracks));
+}
+
+const args = process.argv.slice(2);
+if (args.length != 2) {
+    console.error("Usage: npm run update_tracks <playlist_id> <access_token>");
     sys.exit(1);
 }
-pullTracks(playlist_id!, auth_token!);
-
+const [playlist_id, access_token] = args;
+updateCache(playlist_id!, access_token!);

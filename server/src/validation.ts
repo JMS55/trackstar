@@ -1,5 +1,5 @@
 
-import { Track } from './spotify';
+import { Track } from './tracks';
 
 export function isCorrectTitle(track: Track, guess: string) {
     return closeEnough(simplifyString(simplifyTitle(track.title)), simplifyString(guess));

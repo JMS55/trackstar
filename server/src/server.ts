@@ -1,6 +1,6 @@
 import { Server, WebSocket } from 'ws';
 import { inspect } from 'util';
-import { getRandomUnplayedTrack, Track } from './spotify';
+import { getRandomUnplayedTrack, Track } from './tracks';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 
