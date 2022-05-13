@@ -69,7 +69,7 @@ export function getRandomUnplayedTrack(played_tracks: Set<Track>) {
     var track;
     do {
         track = getRandomTrack();
-    } while (played_tracks.has(track) && track.preview_url) // dunno why this can still be null but it do
+    } while (played_tracks.has(track))
     return track;
 }
 

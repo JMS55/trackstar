@@ -14,7 +14,7 @@ const enum Result {
 
 const enum Topic {
     PLAYERS_CHANGED = 'players_changed',
-    GAME_STARTED = 'game_started',
+    GAME_CONFIG = 'game_config',
     TRACK_INFO = 'track_info',
     GUESS_MADE = 'guess_made',
     START_GAME_COMMAND = 'start_game_command',
@@ -31,7 +31,7 @@ interface WSPlayersChanged {
 }
 
 interface WSGameStarted {
-    topic: Topic.GAME_STARTED,
+    topic: Topic.GAME_CONFIG,
     time_between_tracks: number,
     tracks_per_round: number
 }
@@ -100,12 +100,12 @@ class Room {
     }
 
     sendAll(json: ServerWSMessage) {
-        this.players.forEach(player => this.sendOne(player.client, json));
+        this.players.forEach(player => this.sendOne(player, json));
     }
 
-    sendOne(client: WebSocket, json: ServerWSMessage) {
+    sendOne(player: Player, json: ServerWSMessage) {
         DEBUG && console.log('Sending message to client:\n' + inspect(json));
-        client.send(JSON.stringify(json));
+        player.client.send(JSON.stringify(json));
     }
 
     notifyPlayersChanged() {
@@ -118,6 +118,13 @@ class Room {
     addPlayer(player: Player) {
         this.players.push(player);
         this.notifyPlayersChanged();
+        if (this.game_info) {
+            this.sendOne(player, {
+                topic: Topic.GAME_CONFIG,
+                time_between_tracks: this.game_info!.time_between_tracks,
+                tracks_per_round: this.game_info!.tracks_per_round
+            })
+        }
     }
 
     deletePlayer(player: Player) {
@@ -134,7 +141,7 @@ class Room {
             played_tracks: new Set()
         }
         this.sendAll({
-            topic: Topic.GAME_STARTED,
+            topic: Topic.GAME_CONFIG,
             time_between_tracks: time_between_tracks,
             tracks_per_round: tracks_per_round
         });
@@ -161,9 +168,6 @@ class Room {
     }
 
     processGuess(player:Player, guess: string, time_of_guess: number) {
-        if (!this.game_info || !this.game_info!.track) {
-            console.log('Game/round hasn\'t started yet.');
-        }
         let result;
         if (isCorrectTitle(this.game_info!.track!, guess)) {
             result = Result.TITLE;
