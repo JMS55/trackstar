@@ -97,6 +97,7 @@ export class Game {
         standing.points_from_current_track++;
         if (progress == Progress.NONE) {
             standing.progress = result == GuessResult.TITLE ? Progress.TITLE : Progress.ARTIST;
+            standing.points_from_current_track = 1;
         } else {
             standing.progress = Progress.BOTH;
             this.addCompletion(player, time);
@@ -109,17 +110,34 @@ export class Game {
         this.completions.push({player: player, time: time});
         this.completions.sort((a, b) => (a.time - b.time));
         this.completions.forEach((completion, index) => {
-            let place;
+            let place, points_from_current_track;
             if (index == 0) {
                 place = Place.FIRST;
+                points_from_current_track = 6;
             } else if (index == 1) {
                 place = Place.SECOND;
+                points_from_current_track = 5;
             } else if (index == 2) {
                 place = Place.THIRD;
+                points_from_current_track = 4;
             } else {
                 place = Place.NONE;
+                points_from_current_track = 2;
             }
-            this.leaderboard.get(completion.player)!.place = place;
+            const standing = this.leaderboard.get(completion.player)!;
+            standing.place = place;
+            standing.points_from_current_track = points_from_current_track;
         });
+    }
+
+    endTrack() {
+        this.completions.forEach((completion) => {
+            const standing = this.leaderboard.get(completion.player)!;
+            standing.score += standing.points_from_current_track;
+            standing.points_from_current_track = 0;
+            standing.progress = Progress.NONE;
+            standing.place = Place.NONE;
+        });
+        this.completions = [];
     }
 }
