@@ -1,30 +1,25 @@
 import { Server, WebSocket } from 'ws';
 import { inspect } from 'util';
-import { getRandomUnplayedTrack, Track } from './tracks';
-import { isCorrectTitle, isCorrectArtist } from './validation';
+import { Game, GuessResult, Standing } from './game';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 
 const DEBUG = true;
 const TRACK_PLAY_LENGTH = 30;
 
-const enum Result {
-    TITLE = 'correct_title',
-    ARTIST = 'correct_artist',
-    INCORRECT = 'incorrect'
-}
-
 const enum Topic {
     PLAYERS_CHANGED = 'players_changed',
     GAME_CONFIG = 'game_config',
     TRACK_INFO = 'track_info',
-    GUESS_MADE = 'guess_made',
+    GUESS_RESULT = 'guess_result',
+    LEADERBOARD = 'leaderboard',
     START_GAME_COMMAND = 'start_game_command',
+    START_ROUND_COMMAND = 'start_round_command',
     MAKE_GUESS_COMMAND = 'make_guess_command'
 }
 
 // SERVER->CLIENT MESSAGES
 
-type ServerWSMessage = WSPlayersChanged | WSGameStarted | WSTrackInfo | WSGuessMade;
+type ServerWSMessage = WSPlayersChanged | WSGameStarted | WSTrackInfo | WSGuessResult | WSLeaderBoard;
 
 interface WSPlayersChanged {
     topic: Topic.PLAYERS_CHANGED,
@@ -46,11 +41,14 @@ interface WSTrackInfo {
     when_to_start: number
 }
 
-interface WSGuessMade {
-    topic: Topic.GUESS_MADE,
-    player: string,
-    result: Result,
-    time_of_guess: number
+interface WSGuessResult {
+    topic: Topic.GUESS_RESULT,
+    result: GuessResult
+};
+
+interface WSLeaderBoard {
+    topic: Topic.LEADERBOARD,
+    leaderboard: Map<string, Standing>
 };
 
 // CLIENT->SERVER MESSAGES
@@ -63,13 +61,17 @@ const WSStartGame = Record({
     time_between_tracks: Number
 });
 
+const WSStartRound = Record({
+    topic: Literal(Topic.START_ROUND_COMMAND)
+});
+
 const WSMakeGuess = Record({
     topic: Literal(Topic.MAKE_GUESS_COMMAND),
     guess: String,
     time_of_guess: Number
 })
 
-const ClientWSMessage = Union(WSStartGame, WSMakeGuess); 
+const ClientWSMessage = Union(WSStartGame, WSStartRound, WSMakeGuess);
 
 // END WS MESSAGES
 
@@ -79,25 +81,17 @@ interface Player {
     name: string
 }
 
-interface GameInfo {
-    tracks_per_round: number,
-    time_between_tracks: number,
-    track_number: number,
-    played_tracks: Set<Track>
-    track: Track | null
-}
-
 class Room {
     id: string
     players: Array<Player>
     creator: Player
-    game_info: GameInfo | null
+    game: Game | null
 
     constructor(id: string, creator: Player) {
         this.id = id;
         this.creator = creator;
         this.players = [];
-        this.game_info = null;
+        this.game = null;
     }
 
     sendAll(json: ServerWSMessage) {
@@ -119,11 +113,12 @@ class Room {
     addPlayer(player: Player) {
         this.players.push(player);
         this.notifyPlayersChanged();
-        if (this.game_info) {
+        this.game?.addOrResetPlayer(player.name);
+        if (this.game) {
             this.sendOne(player, {
                 topic: Topic.GAME_CONFIG,
-                time_between_tracks: this.game_info!.time_between_tracks,
-                tracks_per_round: this.game_info!.tracks_per_round
+                time_between_tracks: this.game!.time_between_tracks,
+                tracks_per_round: this.game!.tracks_per_round
             })
         }
     }
@@ -131,58 +126,51 @@ class Room {
     deletePlayer(player: Player) {
         this.players = this.players.filter(p => p != player);
         this.notifyPlayersChanged();
+        this.game?.deletePlayer(player.name);
     }
 
-    startGame(tracks_per_round: number, time_between_tracks: number) {
-        this.game_info = {
-            tracks_per_round: tracks_per_round,
-            time_between_tracks: time_between_tracks,
-            track_number: 1,
-            track: null,
-            played_tracks: new Set()
-        }
+    setGameConfig(tracks_per_round: number, time_between_tracks: number) {
+        this.game = new Game(tracks_per_round, time_between_tracks)
         this.sendAll({
             topic: Topic.GAME_CONFIG,
             time_between_tracks: time_between_tracks,
             tracks_per_round: tracks_per_round
         });
-        setTimeout(() => {this.selectTrack()}, time_between_tracks / 2 * 1000);
+    }
+
+    startRound() {
+        this.game!.resetLeaderboard();
+        setTimeout(() => {this.selectTrack()}, this.game!.time_between_tracks / 2 * 1000);
     }
 
     selectTrack() {
         if (!rooms.has(this.id)) return;
-        const track = getRandomUnplayedTrack(this.game_info!.played_tracks)
-        this.game_info!.track = track;
-        this.game_info!.played_tracks.add(track);
+        const track = this.game!.nextTrack();
         this.sendAll({
             topic: Topic.TRACK_INFO,
             url: track.preview_url!,
             title: track.title,
             aritsts: track.artists,
-            track_number: this.game_info!.track_number,
-            when_to_start: Date.now() + this.game_info!.time_between_tracks / 2
+            track_number: this.game!.current_track_number,
+            when_to_start: Date.now() + this.game!.time_between_tracks / 2
         });
-        this.game_info!.track_number++;
-        if (this.game_info!.track_number <= this.game_info!.tracks_per_round) {
-            setTimeout(() => {this.selectTrack()}, (this.game_info!.time_between_tracks + TRACK_PLAY_LENGTH) * 1000);
+        if (this.game!.current_track_number <= this.game!.tracks_per_round) {
+            setTimeout(() => {this.selectTrack()}, (this.game!.time_between_tracks + TRACK_PLAY_LENGTH) * 1000);
         }
     }
 
-    processGuess(player:Player, guess: string, time_of_guess: number) {
-        let result;
-        if (isCorrectTitle(this.game_info!.track!, guess)) {
-            result = Result.TITLE;
-        } else if (isCorrectArtist(this.game_info!.track!, guess)) {
-            result = Result.ARTIST;
-        } else {
-            result = Result.INCORRECT;
-        }
-        this.sendAll({
-            topic: Topic.GUESS_MADE,
-            player: player.name,
+    processGuess(player: Player, guess: string, time_of_guess: number) {
+        const result = this.game!.processGuess(player.name, guess, time_of_guess);
+        this.sendOne(player, {
+            topic: Topic.GUESS_RESULT,
             result: result,
-            time_of_guess: time_of_guess
         });
+        if (result != GuessResult.INCORRECT) {
+            this.sendAll({
+                topic: Topic.LEADERBOARD,
+                leaderboard: this.game!.leaderboard
+            });
+        }
     }
 }
 
@@ -218,11 +206,14 @@ function handleMessage(room: Room, player: Player, message: string) {
     DEBUG && console.log('Message received from client:\n' + inspect(message_obj));
     if (ClientWSMessage.guard(message_obj)) {
         switch (message_obj.topic) {
-            case 'start_game_command':
-                room.startGame(message_obj.tracks_per_round, message_obj.time_between_tracks);
+            case Topic.START_GAME_COMMAND:
+                room.setGameConfig(message_obj.tracks_per_round, message_obj.time_between_tracks)
+            case Topic.START_ROUND_COMMAND:
+                room.startRound();
                 break;
-            case 'make_guess_command':
+            case Topic.MAKE_GUESS_COMMAND:
                 room.processGuess(player, message_obj.guess, message_obj.time_of_guess);
+                break;
         }
     } else {
         console.log('Not a valid WS message!');
