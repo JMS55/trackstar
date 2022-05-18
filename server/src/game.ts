@@ -82,7 +82,7 @@ export class Game {
     processGuess(player: string, guess: string, time: number) {
         const standing = this.leaderboard.get(player)!;
         const progress = standing.progress;
-        
+
         let result;
         if (progress == Progress.BOTH) {
             return GuessResult.INCORRECT
@@ -107,7 +107,7 @@ export class Game {
     }
 
     addCompletion(player: string, time: number) {
-        this.completions.push({player: player, time: time});
+        this.completions.push({ player: player, time: time });
         this.completions.sort((a, b) => (a.time - b.time));
         this.completions.forEach((completion, index) => {
             let place, points_from_current_track;

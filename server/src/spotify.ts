@@ -8,10 +8,10 @@ const TRACK_PULL_LIMIT = 100;
 const WEB_SCRAPE_TIMEOUT = 500;
 
 const spotify = new Spotify();
-var tracks:Track[] = [];
+var tracks: Track[] = [];
 
 function removeNullTracks() {
-    const goodTracks:Track[] = [];
+    const goodTracks: Track[] = [];
     tracks.forEach(track => {
         if (track.preview_url) {
             goodTracks.push(track)
@@ -52,7 +52,7 @@ async function pullTracks(playlist_id: string, token: string, offset: number) {
     const items = data.body.items;
     items.forEach(item => {
         const track = item.track;
-        const artists:string[] = track.artists.map(artist => artist.name);
+        const artists: string[] = track.artists.map(artist => artist.name);
         tracks.push({
             id: track.id,
             preview_url: track.preview_url,
