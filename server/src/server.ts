@@ -19,14 +19,14 @@ const enum Topic {
 
 // SERVER->CLIENT MESSAGES
 
-type ServerWSMessage = WSPlayersChanged | WSGameStarted | WSTrackInfo | WSGuessResult | WSLeaderBoard;
+type ServerWSMessage = WSPlayersChanged | WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
 
 interface WSPlayersChanged {
     topic: Topic.PLAYERS_CHANGED,
     players: string[]
 }
 
-interface WSGameStarted {
+interface WSGameConfig {
     topic: Topic.GAME_CONFIG,
     time_between_tracks: number,
     tracks_per_round: number
@@ -99,7 +99,7 @@ class Room {
     }
 
     sendOne(player: Player, json: ServerWSMessage) {
-        DEBUG && console.log('Sending message to client:\n' + inspect(json));
+        DEBUG && console.log('Message sent to client:\n' + inspect(json));
         player.client.send(JSON.stringify(json));
     }
 
@@ -189,16 +189,23 @@ function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player]
         client: ws,
         name: player_name
     }
-    const room: Room = rooms.has(room_id) ? rooms.get(room_id) : new Room(room_id, new_player);
+    let room;
+    if (rooms.has(room_id)) {
+        room = rooms.get(room_id);
+    } else {
+        DEBUG && console.log('Room created with ID %s', room_id);
+        room = new Room(room_id, new_player);
+    }
     rooms.set(room_id, room);
     room.addPlayer(new_player);
     return [room, new_player];
 }
 
 function handleClosedConnection(room: Room, player: Player) {
-    DEBUG && console.log('Client disconnected');
+    DEBUG && console.log('Client disconnected for player %s', player.name);
     room.deletePlayer(player);
     if (room.players.length == 0) {
+        DEBUG && console.log('Room deleted with ID %s', room.id);
         rooms.delete(room.id);
     }
 }
