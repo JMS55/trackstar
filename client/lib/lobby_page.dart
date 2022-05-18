@@ -1,8 +1,9 @@
 import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
-import 'package:trackstar/trackstar_service.dart';
-import 'package:trackstar/game_page.dart';
 import 'trackstar_service.dart';
+import 'game_page.dart';
+import 'widgets/page_card.dart';
+import 'widgets/wide_button.dart';
 
 class LobbyPage extends StatefulWidget {
   const LobbyPage({Key? key, required this.isRoomCreator}) : super(key: key);
@@ -14,44 +15,27 @@ class LobbyPage extends StatefulWidget {
 }
 
 class _LobbyPageState extends State<LobbyPage> {
+  Future<void> startGame(BuildContext context) async {
+    TrackStarService trackStarService = Provider.of(context, listen: false);
+    await trackStarService.startGame();
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const GamePage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    Future<void> startGame() async {
-      TrackStarService trackStarService =
-          Provider.of<TrackStarService>(context, listen: false);
-      await trackStarService.startGame();
-      Navigator.pop(context);
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => GamePage()),
-      );
+    TrackStarService trackStarService = Provider.of(context);
+    if (trackStarService.trackNumber == 1) {
+      Future.delayed(Duration.zero, () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const GamePage()),
+        );
+      });
     }
-
-    Widget button(String label, void Function()? onPressed) {
-      return SizedBox(
-        width: double.infinity,
-        child: NeumorphicButton(
-          child: Align(
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color.fromARGB(255, 222, 228, 238),
-                fontSize: 22,
-              ),
-            ),
-          ),
-          style: const NeumorphicStyle(
-              color: Color.fromARGB(255, 49, 69, 106),
-              lightSource: LightSource.topLeft),
-          padding: const EdgeInsets.all(16),
-          onPressed: onPressed,
-        ),
-      );
-    }
-
-    int roomCode =
-        Provider.of<TrackStarService>(context, listen: false).roomId!;
 
     List<Widget> col = <Widget>[
       FittedBox(
@@ -66,7 +50,7 @@ class _LobbyPageState extends State<LobbyPage> {
             ),
             children: [
               TextSpan(
-                text: ' $roomCode ',
+                text: ' ${trackStarService.roomId!} ',
                 style: const TextStyle(
                   color: Color.fromARGB(255, 222, 228, 238),
                   backgroundColor: Color.fromARGB(255, 5, 6, 92),
@@ -78,54 +62,30 @@ class _LobbyPageState extends State<LobbyPage> {
           ),
         ),
       ),
-      Consumer<TrackStarService>(
-        builder: (context, trackStarService, child) => ListView.separated(
-          itemCount: trackStarService.players.length,
-          itemBuilder: (BuildContext context, int index) => Text(
-            trackStarService.players.values.elementAt(index).userName,
-            style: const TextStyle(
-              color: Color.fromARGB(255, 5, 6, 92),
-              fontSize: 18,
-            ),
+      ListView.separated(
+        itemCount: trackStarService.players.length,
+        itemBuilder: (BuildContext context, int index) => Text(
+          trackStarService.players.values.elementAt(index).userName,
+          style: const TextStyle(
+            color: Color.fromARGB(255, 5, 6, 92),
+            fontSize: 18,
           ),
-          separatorBuilder: (BuildContext context, int index) =>
-              const Divider(),
-          shrinkWrap: true,
         ),
+        separatorBuilder: (BuildContext context, int index) => const Divider(),
+        shrinkWrap: true,
       ),
     ];
     if (widget.isRoomCreator) {
-      col.add(const SizedBox(height: 48));
-      col.add(button('Start Game', startGame));
+      col.addAll([
+        const SizedBox(height: 48),
+        WideButton(label: 'Start Game', onPressed: startGame),
+      ]);
     }
 
-    TrackStarService trackStarService = Provider.of<TrackStarService>(context);
-    if (trackStarService.trackNumber == 1) {
-      Future.delayed(Duration.zero, () {
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => GamePage()),
-        );
-      });
-    }
-
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Neumorphic(
-            style: NeumorphicStyle(
-              depth: 15,
-              boxShape: NeumorphicBoxShape.roundRect(
-                  const BorderRadius.all(Radius.circular(28))),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 84, horizontal: 36),
-              child: Column(mainAxisSize: MainAxisSize.min, children: col),
-            ),
-          ),
-        ),
+    return PageCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: col,
       ),
     );
   }
