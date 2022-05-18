@@ -66,7 +66,7 @@ export class Game {
     }
 
     resetLeaderboard() {
-        for (var player in this.leaderboard.keys) {
+        for (const player in this.leaderboard.keys) {
             this.addOrResetPlayer(player);
         }
     }

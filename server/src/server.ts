@@ -119,7 +119,7 @@ class Room {
                 topic: Topic.GAME_CONFIG,
                 time_between_tracks: this.game!.time_between_tracks,
                 tracks_per_round: this.game!.tracks_per_round
-            })
+            });
         }
     }
 
@@ -130,7 +130,8 @@ class Room {
     }
 
     setGameConfig(tracks_per_round: number, time_between_tracks: number) {
-        this.game = new Game(tracks_per_round, time_between_tracks)
+        this.game = new Game(tracks_per_round, time_between_tracks);
+        this.players.forEach(this.addPlayer);
         this.sendAll({
             topic: Topic.GAME_CONFIG,
             time_between_tracks: time_between_tracks,
@@ -189,7 +190,7 @@ function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player]
         client: ws,
         name: player_name
     }
-    let room;
+    let room: Room;
     if (rooms.has(room_id)) {
         room = rooms.get(room_id);
     } else {
