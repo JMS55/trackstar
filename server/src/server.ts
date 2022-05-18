@@ -143,7 +143,7 @@ class Room {
 
     startRound() {
         this.game!.resetLeaderboard();
-        setTimeout(() => {this.selectTrack()}, this.game!.time_between_tracks / 2 * 1000);
+        setTimeout(() => { this.selectTrack() }, this.game!.time_between_tracks / 2 * 1000);
     }
 
     selectTrack() {
@@ -158,8 +158,8 @@ class Room {
             when_to_start: Date.now() + this.game!.time_between_tracks / 2
         });
         if (this.game!.current_track_number <= this.game!.tracks_per_round) {
-            setTimeout(() => {this.selectTrack()}, (this.game!.time_between_tracks + TRACK_PLAY_LENGTH) * 1000);
-            setTimeout(() => {this.updateLeaderboard(true)}, (this.game!.time_between_tracks / 2 + TRACK_PLAY_LENGTH) * 1000);
+            setTimeout(() => { this.selectTrack() }, (this.game!.time_between_tracks + TRACK_PLAY_LENGTH) * 1000);
+            setTimeout(() => { this.updateLeaderboard(true) }, (this.game!.time_between_tracks / 2 + TRACK_PLAY_LENGTH) * 1000);
         }
     }
 
