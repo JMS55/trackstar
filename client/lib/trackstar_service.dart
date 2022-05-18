@@ -17,7 +17,7 @@ class TrackStarService {
   String userName;
 
   GameState gameState = GameState.initial;
-  int trackNumber = -1;
+  int trackNumber = 0;
   int tracksPerRound = -1;
   int trackStartTime = -1;
   int timeBetweenTracks = -1;
@@ -32,15 +32,21 @@ class TrackStarService {
   TrackStarService({int? roomId, required this.userName}) {
     this.roomId = roomId ?? Random().nextInt(99999);
 
+    audioPlayer.onPlayerCompletion.listen((_) {
+      gameState = GameState.betweenTracks;
+
+      guessedTitle = false;
+      guessedArtist = false;
+
+      signalChange();
+    });
+
     ws = WebSocketChannel.connect(Uri(
       scheme: 'ws',
       host: '104.248.230.123',
       port: 8080,
       pathSegments: [this.roomId.toString(), userName],
     ));
-
-    audioPlayer.onPlayerCompletion
-        .listen((_) => gameState = GameState.betweenTracks);
 
     stream = ws.stream.map((msg) => jsonDecode(msg)).listen((msg) {
       String topic = msg['topic'];

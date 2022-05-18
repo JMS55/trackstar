@@ -46,7 +46,7 @@ export class Game {
         this.tracks_per_round = tracks_per_round;
         this.time_between_tracks = time_between_tracks;
         this.current_track = null;
-        this.current_track_number = 1;
+        this.current_track_number = 0;
         this.played_tracks = new Set();
         this.leaderboard = new Map();
         this.completions = [];
