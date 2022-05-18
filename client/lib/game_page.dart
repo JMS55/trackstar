@@ -17,7 +17,7 @@ class _GamePageState extends State<GamePage> {
 
   @override
   void initState() {
-    widget.trackStarService.notifiyChanged = setState;
+    widget.trackStarService.changeSignal = setState;
     super.initState();
   }
 

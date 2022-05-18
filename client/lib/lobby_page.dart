@@ -29,7 +29,7 @@ class _LobbyPageState extends State<LobbyPage> {
 
   void navigateToGamePage() {
     navigatedAway = true;
-    widget.trackStarService.notifiyChanged = null;
+    widget.trackStarService.changeSignal = null;
     Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -39,7 +39,7 @@ class _LobbyPageState extends State<LobbyPage> {
 
   @override
   void initState() {
-    widget.trackStarService.notifiyChanged = setState;
+    widget.trackStarService.changeSignal = setState;
     super.initState();
   }
 

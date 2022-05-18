@@ -11,7 +11,7 @@ class TrackStarService {
   late WebSocketChannel ws;
   late StreamSubscription stream;
   final audioPlayer = AudioPlayer();
-  void Function(void Function())? notifiyChanged;
+  void Function(void Function())? changeSignal;
 
   int roomId = -1;
   String userName;
@@ -59,10 +59,6 @@ class TrackStarService {
       if (topic == LeaderBoardMessage.topic) {
         handleLeaderBoard(LeaderBoardMessage.fromJson(msg));
       }
-
-      if (notifiyChanged != null) {
-        notifiyChanged!(() {});
-      }
     });
   }
 
@@ -88,11 +84,15 @@ class TrackStarService {
         () => Standing(0, 0, Progress.noneCorrect, Place.none),
       );
     }
+
+    signalChange();
   }
 
   void handleGameConfig(GameConfigMessage msg) {
     timeBetweenTracks = msg.timeBetweenTracks;
     tracksPerRound = msg.tracksPerRound;
+
+    signalChange();
   }
 
   void handleTrackInfo(TrackInfoMessage msg) {
@@ -109,6 +109,8 @@ class TrackStarService {
       () {
         gameState = GameState.guessing;
         audioPlayer.play(msg.url, isLocal: false);
+
+        signalChange();
       },
     );
   }
@@ -121,14 +123,25 @@ class TrackStarService {
     if (msg.result == GuessResult.correctArtist) {
       guessedArtist = true;
     }
+
+    signalChange();
   }
 
   void handleLeaderBoard(LeaderBoardMessage msg) {
     leaderboard = msg.leaderboard;
+
+    signalChange();
   }
 
   void disconnect() {
+    audioPlayer.stop();
     ws.sink.close();
+  }
+
+  void signalChange() {
+    if (changeSignal != null) {
+      changeSignal!(() {});
+    }
   }
 }
 
