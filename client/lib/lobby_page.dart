@@ -1,13 +1,17 @@
 import 'package:flutter_neumorphic/flutter_neumorphic.dart';
-import 'package:provider/provider.dart';
 import 'trackstar_service.dart';
 import 'game_page.dart';
 import 'widgets/page_card.dart';
 import 'widgets/wide_button.dart';
 
 class LobbyPage extends StatefulWidget {
-  const LobbyPage({Key? key, required this.isRoomCreator}) : super(key: key);
+  const LobbyPage({
+    Key? key,
+    required this.trackStarService,
+    required this.isRoomCreator,
+  }) : super(key: key);
 
+  final TrackStarService trackStarService;
   final bool isRoomCreator;
 
   @override
@@ -15,26 +19,34 @@ class LobbyPage extends StatefulWidget {
 }
 
 class _LobbyPageState extends State<LobbyPage> {
-  Future<void> startGame(BuildContext context) async {
-    TrackStarService trackStarService = Provider.of(context, listen: false);
-    await trackStarService.startGame();
+  bool navigatedAway = false;
 
+  void startGame(BuildContext context) {
+    widget.trackStarService.startGame();
+
+    navigateToGamePage();
+  }
+
+  void navigateToGamePage() {
+    navigatedAway = true;
+    widget.trackStarService.changeSignal = null;
     Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const GamePage()),
-    );
+        context,
+        MaterialPageRoute(
+            builder: (context) =>
+                GamePage(trackStarService: widget.trackStarService)));
+  }
+
+  @override
+  void initState() {
+    widget.trackStarService.changeSignal = setState;
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    TrackStarService trackStarService = Provider.of(context);
-    if (trackStarService.trackNumber == 1) {
-      Future.delayed(Duration.zero, () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const GamePage()),
-        );
-      });
+    if (widget.trackStarService.trackNumber == 1) {
+      Future.delayed(Duration.zero, () => navigateToGamePage());
     }
 
     List<Widget> col = <Widget>[
@@ -50,7 +62,7 @@ class _LobbyPageState extends State<LobbyPage> {
             ),
             children: [
               TextSpan(
-                text: ' ${trackStarService.roomId!} ',
+                text: ' ${widget.trackStarService.roomId} ',
                 style: const TextStyle(
                   color: Color.fromARGB(255, 222, 228, 238),
                   backgroundColor: Color.fromARGB(255, 5, 6, 92),
@@ -63,9 +75,9 @@ class _LobbyPageState extends State<LobbyPage> {
         ),
       ),
       ListView.separated(
-        itemCount: trackStarService.players.length,
+        itemCount: widget.trackStarService.leaderboard.length,
         itemBuilder: (BuildContext context, int index) => Text(
-          trackStarService.players.values.elementAt(index).userName,
+          widget.trackStarService.leaderboard.keys.elementAt(index),
           style: const TextStyle(
             color: Color.fromARGB(255, 5, 6, 92),
             fontSize: 18,
@@ -88,5 +100,13 @@ class _LobbyPageState extends State<LobbyPage> {
         children: col,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    if (!navigatedAway) {
+      widget.trackStarService.disconnect();
+    }
+    super.dispose();
   }
 }

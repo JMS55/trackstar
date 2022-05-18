@@ -1,8 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic/flutter_neumorphic.dart';
-import 'package:provider/provider.dart';
 import 'enter_name_page.dart';
-import 'trackstar_service.dart';
 import 'widgets/single_input_page.dart';
 
 class EnterCodePage extends StatelessWidget {
@@ -18,14 +16,12 @@ class EnterCodePage extends StatelessWidget {
     );
   }
 
-  Future<void> nextPage(BuildContext context, String input) async {
-    TrackStarService trackStarService = Provider.of(context, listen: false);
-    trackStarService.roomId = int.parse(input);
-
+  void nextPage(BuildContext context, String input) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const EnterNamePage(isCreatingRoom: false),
+        builder: (context) =>
+            EnterNamePage(roomId: int.parse(input), isRoomCreator: false),
       ),
     );
   }

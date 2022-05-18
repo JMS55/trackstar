@@ -37,7 +37,7 @@ class HomePage extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const EnterNamePage(isCreatingRoom: true),
+        builder: (context) => const EnterNamePage(isRoomCreator: true),
       ),
     );
   }

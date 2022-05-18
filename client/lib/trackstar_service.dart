@@ -1,410 +1,268 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
+import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 part 'trackstar_service.g.dart';
 
-class TrackStarService extends ChangeNotifier {
-  final ws = WebSocketChannel.connect(Uri.parse('ws://104.248.230.123:8080'));
-  late Stream<Response> stream;
+class TrackStarService {
+  late WebSocketChannel ws;
+  late StreamSubscription stream;
   final audioPlayer = AudioPlayer();
+  void Function(void Function())? changeSignal;
 
-  int? roomId;
-  String? userName;
-  int? playerId;
+  int roomId = -1;
+  String userName;
 
+  GameState gameState = GameState.initial;
   int trackNumber = -1;
-  int startTime = 0;
-  int? waitTime;
+  int tracksPerRound = -1;
+  int trackStartTime = -1;
+  int timeBetweenTracks = -1;
 
   bool guessedTitle = false;
   bool guessedArtist = false;
-  Map<int, Player> players = {};
-  Map<int, List> correctGuesses = {};
+  Map<String, Standing> leaderboard = {};
 
-  String? trackName;
-  List<String>? trackArtists;
+  String trackTitle = "";
+  List<String> trackArtists = [];
 
-  TrackStarService() {
-    stream = ws.stream
-        .asBroadcastStream()
-        .map((m) => Response.fromJson(jsonDecode(m)));
+  TrackStarService({int? roomId, required this.userName}) {
+    this.roomId = roomId ?? Random().nextInt(99999);
 
-    stream.listen((msg) {
-      if (msg is PlayerJoined) {
-        handlePlayerJoined(msg);
+    ws = WebSocketChannel.connect(Uri(
+      scheme: 'ws',
+      host: '104.248.230.123',
+      port: 8080,
+      pathSegments: [this.roomId.toString(), userName],
+    ));
+
+    audioPlayer.onPlayerCompletion
+        .listen((_) => gameState = GameState.betweenTracks);
+
+    stream = ws.stream.map((msg) => jsonDecode(msg)).listen((msg) {
+      String topic = msg['topic'];
+      if (topic == PlayersChangedMessage.topic) {
+        handlePlayersChanged(PlayersChangedMessage.fromJson(msg));
       }
-      if (msg is PlayerLeft) {
-        handlePlayerLeft(msg);
+      if (topic == GameConfigMessage.topic) {
+        handleGameConfig(GameConfigMessage.fromJson(msg));
       }
-      if (msg is TrackStarted) {
-        handleTrackStarted(msg);
+      if (topic == TrackInfoMessage.topic) {
+        handleTrackInfo(TrackInfoMessage.fromJson(msg));
       }
-      if (msg is TrackEnded) {
-        handleTrackEnded(msg);
+      if (topic == GuessResultMessage.topic) {
+        handleGuessResult(GuessResultMessage.fromJson(msg));
       }
-      if (msg is MakeGuessResponse) {
-        handleMakeGuessResponse(msg);
-      }
-      if (msg is CorrectGuessMade) {
-        handleCorrectGuessMade(msg);
-      }
-      if (msg is RoundOver) {
-        handleRoundOver(msg);
+      if (topic == LeaderBoardMessage.topic) {
+        handleLeaderBoard(LeaderBoardMessage.fromJson(msg));
       }
     });
   }
 
-  Future<CreateRoomResponse> createRoom() async {
-    ws.sink.add(jsonEncode(CreateRoomRequest(userName!).toJson()));
-    CreateRoomResponse response = await waitForResponse();
-    if (response.status != 'success') {
-      throw Error();
-    } else {
-      roomId = response.roomId;
-      playerId = response.creatorId;
-      players[response.creatorId] = Player(userName!);
-      return response;
+  void startGame() {
+    ws.sink.add(jsonEncode(
+        StartGameCommand(tracksPerRound: 15, timeBetweenTracks: 10).toJson()));
+  }
+
+  void startRound() {
+    ws.sink.add(jsonEncode(StartRoundCommand().toJson()));
+  }
+
+  void makeGuess(String guess) {
+    ws.sink.add(jsonEncode(MakeGuessCommand(guess).toJson()));
+  }
+
+  void handlePlayersChanged(PlayersChangedMessage msg) {
+    leaderboard.removeWhere((player, _) => !msg.players.contains(player));
+
+    for (String player in msg.players) {
+      leaderboard.putIfAbsent(
+        player,
+        () => Standing(0, 0, Progress.noneCorrect, Place.none),
+      );
     }
+
+    signalChange();
   }
 
-  Future<JoinRoomResponse> joinRoom() async {
-    ws.sink.add(jsonEncode(JoinRoomRequest(roomId!, userName!).toJson()));
-    JoinRoomResponse response = await waitForResponse();
-    if (response.status != 'success') {
-      throw Error();
-    } else {
-      playerId = response.playerId;
-      response.existingPlayers.forEach((key, value) {
-        players[int.parse(key)] = Player(value);
-      });
-      return response;
-    }
+  void handleGameConfig(GameConfigMessage msg) {
+    timeBetweenTracks = msg.timeBetweenTracks;
+    tracksPerRound = msg.tracksPerRound;
+
+    signalChange();
   }
 
-  Future<void> leaveRoom() async {
-    ws.sink.add(jsonEncode(LeaveRoomRequest(roomId!, playerId!).toJson()));
-    LeaveRoomResponse response = await waitForResponse();
-    if (response.status != 'success') {
-      throw Error();
-    }
-  }
-
-  Future<void> startGame() async {
-    ws.sink.add(jsonEncode(StartGameRequest(roomId!).toJson()));
-    StartGameResponse response = await waitForResponse();
-    if (response.status != 'success') {
-      throw Error();
-    }
-  }
-
-  Future<void> makeGuess(String guess) async {
-    ws.sink
-        .add(jsonEncode(MakeGuessRequest(roomId!, playerId!, guess).toJson()));
-  }
-
-  void handlePlayerJoined(PlayerJoined msg) {
-    players[msg.playerId] = Player(msg.playerName);
-
-    notifyListeners();
-  }
-
-  void handlePlayerLeft(PlayerLeft msg) {
-    players.remove(msg.playerId);
-
-    notifyListeners();
-  }
-
-  void handleTrackStarted(TrackStarted msg) {
+  void handleTrackInfo(TrackInfoMessage msg) {
     trackNumber = msg.trackNumber;
-    startTime = msg.startTime;
-    guessedArtist = false;
-    guessedTitle = false;
-    trackName = null;
-    trackArtists = null;
+    trackStartTime = msg.whenToStart;
+    trackTitle = msg.title;
+    trackArtists = msg.aritsts;
 
-    audioPlayer.play(msg.trackUrl, isLocal: false);
+    Duration delayUntilTrackStart =
+        DateTime.fromMillisecondsSinceEpoch(trackStartTime, isUtc: true)
+            .difference(DateTime.now().toUtc());
+    Future.delayed(
+      delayUntilTrackStart,
+      () {
+        gameState = GameState.guessing;
+        audioPlayer.play(msg.url, isLocal: false);
 
-    notifyListeners();
+        signalChange();
+      },
+    );
   }
 
-  void handleTrackEnded(TrackEnded msg) {
-    trackName = msg.trackName;
-    trackArtists = msg.trackArtists;
-    waitTime = msg.waitTime;
-
-    List<int> sortedGuesses = [];
-    SplayTreeMap<int, String>.from(
-            correctGuesses,
-            (pid1, pid2) =>
-                correctGuesses[pid1]![2].compareTo(correctGuesses[pid2]![2]))
-        .forEach((k, v) => sortedGuesses.add(k));
-
-    if (sortedGuesses.isNotEmpty) {
-      players[sortedGuesses[0]]?.score += 4;
-    } else if (sortedGuesses.length >= 2) {
-      players[sortedGuesses[1]]?.score += 3;
-    } else if (sortedGuesses.length >= 3) {
-      players[sortedGuesses[2]]?.score += 2;
-    }
-
-    correctGuesses.forEach((key, value) {
-      correctGuesses[key] = [false, false, value[2]];
-    });
-
-    notifyListeners();
-  }
-
-  void handleMakeGuessResponse(MakeGuessResponse msg) {
-    if (msg.result == 'correct_artist') {
-      guessedArtist = true;
-
-      notifyListeners();
-    } else if (msg.result == 'correct_title') {
+  void handleGuessResult(GuessResultMessage msg) {
+    if (msg.result == GuessResult.correctTitle) {
       guessedTitle = true;
-
-      notifyListeners();
     }
+
+    if (msg.result == GuessResult.correctArtist) {
+      guessedArtist = true;
+    }
+
+    signalChange();
   }
 
-  void handleCorrectGuessMade(CorrectGuessMade msg) {
-    if (correctGuesses[msg.playerId] == null) {
-      correctGuesses[msg.playerId] = [false, false, 0];
-    }
+  void handleLeaderBoard(LeaderBoardMessage msg) {
+    leaderboard = msg.leaderboard;
 
-    if (msg.fieldGuessed == 'title') {
-      correctGuesses[msg.playerId]![0] = true;
-      players[msg.playerId]?.score += 1;
-    } else if (msg.fieldGuessed == 'artist') {
-      correctGuesses[msg.playerId]![1] = true;
-      players[msg.playerId]?.score += 1;
-    }
-
-    if (correctGuesses[msg.playerId]![0] && correctGuesses[msg.playerId]![1]) {
-      correctGuesses[msg.playerId]![2] = msg.timeOfGuess;
-    }
-
-    notifyListeners();
+    signalChange();
   }
 
-  void handleRoundOver(RoundOver msg) {
-    trackNumber = -1;
-    startTime = 0;
-    players.forEach((id, player) => player.score = 0);
-  }
-
-  Future<T> waitForResponse<T extends Response>() async {
-    return (await stream.firstWhere((msg) => msg is T)) as T;
-  }
-
-  @override
-  Future<void> dispose() async {
-    if (roomId != null) {
-      await leaveRoom();
-    }
-
+  void disconnect() {
+    audioPlayer.stop();
     ws.sink.close();
+  }
 
-    super.dispose();
+  void signalChange() {
+    if (changeSignal != null) {
+      changeSignal!(() {});
+    }
   }
 }
 
-class Player {
-  String userName;
-  int score = 0;
-
-  Player(this.userName);
-}
+enum GameState { initial, guessing, betweenTracks }
 
 // -----------------------------------------------------------------------------
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class CreateRoomRequest {
-  String topic = 'create_room';
-  String creatorName;
+class StartGameCommand {
+  String topic = 'start_game_command';
+  int tracksPerRound;
+  int timeBetweenTracks;
 
-  CreateRoomRequest(this.creatorName);
-  Map<String, dynamic> toJson() => _$CreateRoomRequestToJson(this);
+  StartGameCommand(
+      {required this.tracksPerRound, required this.timeBetweenTracks});
+  factory StartGameCommand.fromJson(Map<String, dynamic> json) =>
+      _$StartGameCommandFromJson(json);
+  Map<String, dynamic> toJson() => _$StartGameCommandToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class CreateRoomResponse extends Response {
-  final String status;
-  final int roomId;
-  final int creatorId;
+class StartRoundCommand {
+  String topic = 'start_round_command';
 
-  CreateRoomResponse(this.status, this.roomId, this.creatorId);
-  factory CreateRoomResponse.fromJson(Map<String, dynamic> json) =>
-      _$CreateRoomResponseFromJson(json);
+  StartRoundCommand();
+  factory StartRoundCommand.fromJson(Map<String, dynamic> json) =>
+      _$StartRoundCommandFromJson(json);
+  Map<String, dynamic> toJson() => _$StartRoundCommandToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class JoinRoomRequest {
-  String topic = 'join_room';
-  int roomId;
-  String playerName;
-
-  JoinRoomRequest(this.roomId, this.playerName);
-  Map<String, dynamic> toJson() => _$JoinRoomRequestToJson(this);
-}
-
-@JsonSerializable(fieldRename: FieldRename.snake)
-class JoinRoomResponse extends Response {
-  final String status;
-  final int playerId;
-  final Map<String, String> existingPlayers;
-
-  JoinRoomResponse(this.status, this.playerId, this.existingPlayers);
-  factory JoinRoomResponse.fromJson(Map<String, dynamic> json) =>
-      _$JoinRoomResponseFromJson(json);
-}
-
-@JsonSerializable(fieldRename: FieldRename.snake)
-class LeaveRoomRequest {
-  String topic = 'leave_room';
-  int roomId, playerId;
-
-  LeaveRoomRequest(this.roomId, this.playerId);
-  Map<String, dynamic> toJson() => _$LeaveRoomRequestToJson(this);
-}
-
-@JsonSerializable(fieldRename: FieldRename.snake)
-class LeaveRoomResponse extends Response {
-  final String status;
-
-  LeaveRoomResponse(this.status);
-  factory LeaveRoomResponse.fromJson(Map<String, dynamic> json) =>
-      _$LeaveRoomResponseFromJson(json);
-}
-
-@JsonSerializable(fieldRename: FieldRename.snake)
-class StartGameRequest {
-  String topic = 'start_game';
-  int roomId;
-
-  StartGameRequest(this.roomId);
-  Map<String, dynamic> toJson() => _$StartGameRequestToJson(this);
-}
-
-@JsonSerializable(fieldRename: FieldRename.snake)
-class StartGameResponse extends Response {
-  final String status;
-
-  StartGameResponse(this.status);
-  factory StartGameResponse.fromJson(Map<String, dynamic> json) =>
-      _$StartGameResponseFromJson(json);
-}
-
-@JsonSerializable(fieldRename: FieldRename.snake)
-class MakeGuessRequest {
-  String topic = 'make_guess';
-  int timeOfGuess = DateTime.now().millisecondsSinceEpoch;
-  int roomId, playerId;
+class MakeGuessCommand {
+  String topic = 'make_guess_command';
   String guess;
+  int timeOfGuess = DateTime.now().millisecondsSinceEpoch;
 
-  MakeGuessRequest(this.roomId, this.playerId, this.guess);
-  Map<String, dynamic> toJson() => _$MakeGuessRequestToJson(this);
+  MakeGuessCommand(this.guess);
+  factory MakeGuessCommand.fromJson(Map<String, dynamic> json) =>
+      _$MakeGuessCommandFromJson(json);
+  Map<String, dynamic> toJson() => _$MakeGuessCommandToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class MakeGuessResponse extends Response {
-  final String result;
+class PlayersChangedMessage {
+  static const String topic = 'players_changed';
+  final List<String> players;
 
-  MakeGuessResponse(this.result);
-  factory MakeGuessResponse.fromJson(Map<String, dynamic> json) =>
-      _$MakeGuessResponseFromJson(json);
+  PlayersChangedMessage(this.players);
+  factory PlayersChangedMessage.fromJson(Map<String, dynamic> json) =>
+      _$PlayersChangedMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$PlayersChangedMessageToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class TrackStarted extends Response {
-  final String trackUrl;
-  final int trackNumber, startTime;
+class GameConfigMessage {
+  static const String topic = 'game_config';
+  final int timeBetweenTracks;
+  final int tracksPerRound;
 
-  TrackStarted(this.trackUrl, this.trackNumber, this.startTime);
-  factory TrackStarted.fromJson(Map<String, dynamic> json) =>
-      _$TrackStartedFromJson(json);
+  GameConfigMessage(this.timeBetweenTracks, this.tracksPerRound);
+  factory GameConfigMessage.fromJson(Map<String, dynamic> json) =>
+      _$GameConfigMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$GameConfigMessageToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class TrackEnded extends Response {
-  final String trackName;
-  final List<String> trackArtists;
-  final int waitTime;
+class TrackInfoMessage {
+  static const String topic = 'track_info';
+  final String url;
+  final String title;
+  final List<String> aritsts;
+  final int trackNumber;
+  final int whenToStart;
 
-  TrackEnded(this.trackName, this.trackArtists, this.waitTime);
-  factory TrackEnded.fromJson(Map<String, dynamic> json) =>
-      _$TrackEndedFromJson(json);
+  TrackInfoMessage(
+      this.url, this.title, this.aritsts, this.trackNumber, this.whenToStart);
+  factory TrackInfoMessage.fromJson(Map<String, dynamic> json) =>
+      _$TrackInfoMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$TrackInfoMessageToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class CorrectGuessMade extends Response {
-  final String fieldGuessed;
-  final int playerId, timeOfGuess;
+class GuessResultMessage {
+  static const String topic = 'guess_result';
+  final GuessResult result;
 
-  CorrectGuessMade(this.playerId, this.fieldGuessed, this.timeOfGuess);
-  factory CorrectGuessMade.fromJson(Map<String, dynamic> json) =>
-      _$CorrectGuessMadeFromJson(json);
+  GuessResultMessage(this.result);
+  factory GuessResultMessage.fromJson(Map<String, dynamic> json) =>
+      _$GuessResultMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$GuessResultMessageToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class RoundOver extends Response {
-  RoundOver();
+class LeaderBoardMessage {
+  static const String topic = 'leaderboard';
+  Map<String, Standing> leaderboard;
 
-  factory RoundOver.fromJson(Map<String, dynamic> json) =>
-      _$RoundOverFromJson(json);
+  LeaderBoardMessage(this.leaderboard);
+  factory LeaderBoardMessage.fromJson(Map<String, dynamic> json) =>
+      _$LeaderBoardMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$LeaderBoardMessageToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class PlayerJoined extends Response {
-  final String playerName;
-  final int playerId;
+class Standing {
+  final int score;
+  final int pointsFromCurrentTrack;
+  final Progress progress;
+  final Place place;
 
-  PlayerJoined(this.playerId, this.playerName);
-  factory PlayerJoined.fromJson(Map<String, dynamic> json) =>
-      _$PlayerJoinedFromJson(json);
+  Standing(this.score, this.pointsFromCurrentTrack, this.progress, this.place);
+  factory Standing.fromJson(Map<String, dynamic> json) =>
+      _$StandingFromJson(json);
+  Map<String, dynamic> toJson() => _$StandingToJson(this);
 }
 
-@JsonSerializable(fieldRename: FieldRename.snake)
-class PlayerLeft extends Response {
-  final int playerId;
+@JsonEnum(fieldRename: FieldRename.snake)
+enum GuessResult { correctTitle, correctArtist, incorrect }
 
-  PlayerLeft(this.playerId);
-  factory PlayerLeft.fromJson(Map<String, dynamic> json) =>
-      _$PlayerLeftFromJson(json);
-}
+@JsonEnum(fieldRename: FieldRename.snake)
+enum Progress { correctTitle, correctArtist, bothCorrect, noneCorrect }
 
-abstract class Response {
-  Response();
-  factory Response.fromJson(Map<String, dynamic> json) {
-    switch (json['topic']) {
-      case 'create_room_response':
-        return CreateRoomResponse.fromJson(json);
-      case 'join_room_response':
-        return JoinRoomResponse.fromJson(json);
-      case 'leave_room_response':
-        return LeaveRoomResponse.fromJson(json);
-      case 'start_game_response':
-        return StartGameResponse.fromJson(json);
-      case 'make_guess_response':
-        return MakeGuessResponse.fromJson(json);
-      case 'track_started':
-        return TrackStarted.fromJson(json);
-      case 'track_ended':
-        return TrackEnded.fromJson(json);
-      case 'correct_guess_made':
-        return CorrectGuessMade.fromJson(json);
-      case 'round_over':
-        return RoundOver();
-      case 'player_joined':
-        return PlayerJoined.fromJson(json);
-      case 'player_left':
-        return PlayerLeft.fromJson(json);
-      default:
-        throw ArgumentError('Unknown type');
-    }
-  }
-}
+@JsonEnum(fieldRename: FieldRename.snake)
+enum Place { first, second, third, none }
