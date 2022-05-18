@@ -1,13 +1,8 @@
 import 'package:flutter_neumorphic/flutter_neumorphic.dart';
-import 'package:provider/provider.dart';
 import 'home_page.dart';
-import 'trackstar_service.dart';
 
 void main() {
-  runApp(ChangeNotifierProvider(
-    create: (context) => TrackStarService(),
-    child: const App(),
-  ));
+  runApp(const App());
 }
 
 class App extends StatelessWidget {

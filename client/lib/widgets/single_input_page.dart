@@ -3,7 +3,7 @@ import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 
 class SingleInputPage extends StatefulWidget {
   final String label;
-  final Future<void> Function(BuildContext, String) onSubmit;
+  final void Function(BuildContext, String) onSubmit;
   final List<TextInputFormatter>? inputFormatters;
   final TextInputType? keyboardType;
 
@@ -89,7 +89,7 @@ class _SingleInputPageState extends State<SingleInputPage> {
               : const Color.fromARGB(255, 5, 6, 92),
         ),
         onPressed: nextPageEnabled
-            ? () async => await widget.onSubmit(context, textController.text)
+            ? () => widget.onSubmit(context, textController.text)
             : () {},
       ),
     );
