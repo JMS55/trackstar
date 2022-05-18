@@ -52,7 +52,7 @@ interface WSLeaderBoard {
 };
 
 // CLIENT->SERVER MESSAGES
-// these look a little different because they're validated at runtime, 
+// these look a little different because they're validated at runtime,
 // but everything is the same generally
 
 const WSStartGame = Record({
@@ -131,7 +131,9 @@ class Room {
 
     setGameConfig(tracks_per_round: number, time_between_tracks: number) {
         this.game = new Game(tracks_per_round, time_between_tracks);
-        this.players.forEach(this.addPlayer);
+        for (const player of this.players) {
+            this.game.addOrResetPlayer(player.name);
+        }
         this.sendAll({
             topic: Topic.GAME_CONFIG,
             time_between_tracks: time_between_tracks,

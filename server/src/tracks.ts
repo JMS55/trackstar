@@ -7,7 +7,7 @@ export interface Track {
     artists: Array<string>
 }
 
-var tracks:Track[] = [];
+var tracks: Track[] = [];
 
 export function getRandomUnplayedTrack(played_tracks: Set<Track>) {
     var track;
