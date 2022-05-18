@@ -82,15 +82,15 @@ class _SingleInputPageState extends State<SingleInputPage> {
                   ? const Color.fromARGB(255, 49, 69, 106)
                   : null,
             ),
+        onPressed: nextPageEnabled
+            ? () => widget.onSubmit(context, textController.text)
+            : () {},
         child: Icon(
           Icons.navigate_next_rounded,
           color: nextPageEnabled
               ? const Color.fromARGB(255, 222, 228, 238)
               : const Color.fromARGB(255, 5, 6, 92),
         ),
-        onPressed: nextPageEnabled
-            ? () => widget.onSubmit(context, textController.text)
-            : () {},
       ),
     );
   }

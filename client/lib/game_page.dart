@@ -23,7 +23,61 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
+    Widget dynamicWidget;
+    switch (widget.trackStarService.gameState) {
+      case GameState.initial:
+        dynamicWidget = const Text('Wait for the first track to play');
+        break;
+      case GameState.guessing:
+        dynamicWidget = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: Text(
+                'Guess (Track Title or Artist)',
+                style: TextStyle(
+                  color: Color.fromARGB(255, 5, 6, 92),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Neumorphic(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: TextField(
+                  cursorColor: const Color.fromARGB(255, 5, 6, 92),
+                  style: const TextStyle(
+                    color: Color.fromARGB(255, 5, 6, 92),
+                    fontSize: 22,
+                  ),
+                  decoration: const InputDecoration.collapsed(hintText: ""),
+                  controller: textController,
+                ),
+              ),
+            ),
+          ],
+        );
+        break;
+      case GameState.betweenTracks:
+        dynamicWidget = Text(
+            'That track was ${widget.trackStarService.trackTitle} by ${widget.trackStarService.trackArtists.join(', ')}!');
+        break;
+    }
+
     return PageCard(
+      floatingActionButton: NeumorphicFloatingActionButton(
+        style: NeumorphicTheme.currentTheme(context)
+            .appBarTheme
+            .buttonStyle
+            .copyWith(color: const Color.fromARGB(255, 49, 69, 106)),
+        child: const Icon(Icons.send_rounded,
+            color: Color.fromARGB(255, 222, 228, 238)),
+        onPressed: () => widget.trackStarService.makeGuess(textController.text),
+      ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         FittedBox(
           fit: BoxFit.contain,
@@ -70,14 +124,12 @@ class _GamePageState extends State<GamePage> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: ListView.separated(
-            // TODO: Use active players
-            itemCount: 0,
+            itemCount: widget.trackStarService.leaderboard.length,
             itemBuilder: (BuildContext context, int index) {
-              // PlayerInfo player =
-              //     widget.trackStarService.players.values.elementAt(index);
+              MapEntry<String, Standing> player =
+                  widget.trackStarService.leaderboard.entries.elementAt(index);
               return Text(
-                // '${player.userName}: ${player.score}',
-                '',
+                '${player.key}: ${player.value.score}',
                 style: const TextStyle(
                   color: Color.fromARGB(255, 5, 6, 92),
                   fontSize: 18,
@@ -90,42 +142,7 @@ class _GamePageState extends State<GamePage> {
           ),
         ),
         const SizedBox(height: 36),
-        (widget.trackStarService.trackTitle == null
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Text(
-                      'Guess (Song Title or Artist)',
-                      style: TextStyle(
-                        color: Color.fromARGB(255, 5, 6, 92),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Neumorphic(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: TextField(
-                        cursorColor: const Color.fromARGB(255, 5, 6, 92),
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 5, 6, 92),
-                          fontSize: 22,
-                        ),
-                        decoration:
-                            const InputDecoration.collapsed(hintText: ""),
-                        controller: textController,
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : Text(
-                'That song was ${widget.trackStarService.trackTitle} by ${widget.trackStarService.trackArtists!.join(', ')}!')),
+        dynamicWidget,
         const SizedBox(height: 24),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(
@@ -149,15 +166,6 @@ class _GamePageState extends State<GamePage> {
           )
         ])
       ]),
-      floatingActionButton: NeumorphicFloatingActionButton(
-        style: NeumorphicTheme.currentTheme(context)
-            .appBarTheme
-            .buttonStyle
-            .copyWith(color: const Color.fromARGB(255, 49, 69, 106)),
-        child: const Icon(Icons.send_rounded,
-            color: Color.fromARGB(255, 222, 228, 238)),
-        onPressed: () => widget.trackStarService.makeGuess(textController.text),
-      ),
     );
   }
 

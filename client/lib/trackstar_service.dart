@@ -16,6 +16,7 @@ class TrackStarService {
   int roomId = -1;
   String userName;
 
+  GameState gameState = GameState.initial;
   int trackNumber = -1;
   int tracksPerRound = -1;
   int trackStartTime = -1;
@@ -35,19 +36,19 @@ class TrackStarService {
       scheme: 'ws',
       host: '104.248.230.123',
       port: 8080,
-      pathSegments: [roomId.toString(), userName],
+      pathSegments: [this.roomId.toString(), userName],
     ));
 
-    // TODO: Need to signal to the UI whether to show trackTitle/trackArtists or not
-    audioPlayer.onPlayerCompletion.listen((_) {});
+    audioPlayer.onPlayerCompletion
+        .listen((_) => gameState = GameState.betweenTracks);
 
     stream = ws.stream.map((msg) => jsonDecode(msg)).listen((msg) {
       String topic = msg['topic'];
       if (topic == PlayersChangedMessage.topic) {
         handlePlayersChanged(PlayersChangedMessage.fromJson(msg));
       }
-      if (topic == GameStartedMessage.topic) {
-        handleGameStarted(GameStartedMessage.fromJson(msg));
+      if (topic == GameConfigMessage.topic) {
+        handleGameConfig(GameConfigMessage.fromJson(msg));
       }
       if (topic == TrackInfoMessage.topic) {
         handleTrackInfo(TrackInfoMessage.fromJson(msg));
@@ -66,7 +67,8 @@ class TrackStarService {
   }
 
   void startGame() {
-    ws.sink.add(jsonEncode(StartGameCommand(15, 10).toJson()));
+    ws.sink.add(jsonEncode(
+        StartGameCommand(tracksPerRound: 15, timeBetweenTracks: 10).toJson()));
   }
 
   void startRound() {
@@ -82,11 +84,13 @@ class TrackStarService {
 
     for (String player in msg.players) {
       leaderboard.putIfAbsent(
-          player, () => Standing(0, 0, Progress.noneCorrect, Place.none));
+        player,
+        () => Standing(0, 0, Progress.noneCorrect, Place.none),
+      );
     }
   }
 
-  void handleGameStarted(GameStartedMessage msg) {
+  void handleGameConfig(GameConfigMessage msg) {
     timeBetweenTracks = msg.timeBetweenTracks;
     tracksPerRound = msg.tracksPerRound;
   }
@@ -97,9 +101,16 @@ class TrackStarService {
     trackTitle = msg.title;
     trackArtists = msg.aritsts;
 
-    var delay = DateTime.fromMillisecondsSinceEpoch(trackStartTime, isUtc: true)
-        .difference(DateTime.now().toUtc());
-    Future.delayed(delay, () => audioPlayer.play(msg.url, isLocal: false));
+    Duration delayUntilTrackStart =
+        DateTime.fromMillisecondsSinceEpoch(trackStartTime, isUtc: true)
+            .difference(DateTime.now().toUtc());
+    Future.delayed(
+      delayUntilTrackStart,
+      () {
+        gameState = GameState.guessing;
+        audioPlayer.play(msg.url, isLocal: false);
+      },
+    );
   }
 
   void handleGuessResult(GuessResultMessage msg) {
@@ -121,15 +132,18 @@ class TrackStarService {
   }
 }
 
+enum GameState { initial, guessing, betweenTracks }
+
 // -----------------------------------------------------------------------------
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class StartGameCommand {
-  final String topic = 'start_game_command';
-  final int tracksPerRound;
-  final int timeBetweenTracks;
+  String topic = 'start_game_command';
+  int tracksPerRound;
+  int timeBetweenTracks;
 
-  StartGameCommand(this.tracksPerRound, this.timeBetweenTracks);
+  StartGameCommand(
+      {required this.tracksPerRound, required this.timeBetweenTracks});
   factory StartGameCommand.fromJson(Map<String, dynamic> json) =>
       _$StartGameCommandFromJson(json);
   Map<String, dynamic> toJson() => _$StartGameCommandToJson(this);
@@ -137,7 +151,7 @@ class StartGameCommand {
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class StartRoundCommand {
-  final String topic = 'start_round_command';
+  String topic = 'start_round_command';
 
   StartRoundCommand();
   factory StartRoundCommand.fromJson(Map<String, dynamic> json) =>
@@ -147,9 +161,9 @@ class StartRoundCommand {
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class MakeGuessCommand {
-  final String topic = 'make_guess_command';
-  final String guess;
-  final int timeOfGuess = DateTime.now().millisecondsSinceEpoch;
+  String topic = 'make_guess_command';
+  String guess;
+  int timeOfGuess = DateTime.now().millisecondsSinceEpoch;
 
   MakeGuessCommand(this.guess);
   factory MakeGuessCommand.fromJson(Map<String, dynamic> json) =>
@@ -169,15 +183,15 @@ class PlayersChangedMessage {
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class GameStartedMessage {
-  static const String topic = 'game_started';
+class GameConfigMessage {
+  static const String topic = 'game_config';
   final int timeBetweenTracks;
   final int tracksPerRound;
 
-  GameStartedMessage(this.timeBetweenTracks, this.tracksPerRound);
-  factory GameStartedMessage.fromJson(Map<String, dynamic> json) =>
-      _$GameStartedMessageFromJson(json);
-  Map<String, dynamic> toJson() => _$GameStartedMessageToJson(this);
+  GameConfigMessage(this.timeBetweenTracks, this.tracksPerRound);
+  factory GameConfigMessage.fromJson(Map<String, dynamic> json) =>
+      _$GameConfigMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$GameConfigMessageToJson(this);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
@@ -210,7 +224,7 @@ class GuessResultMessage {
 @JsonSerializable(fieldRename: FieldRename.snake)
 class LeaderBoardMessage {
   static const String topic = 'leaderboard';
-  final Map<String, Standing> leaderboard;
+  Map<String, Standing> leaderboard;
 
   LeaderBoardMessage(this.leaderboard);
   factory LeaderBoardMessage.fromJson(Map<String, dynamic> json) =>

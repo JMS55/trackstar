@@ -75,11 +75,9 @@ class _LobbyPageState extends State<LobbyPage> {
         ),
       ),
       ListView.separated(
-        // TODO: Use active players
-        itemCount: 0,
+        itemCount: widget.trackStarService.leaderboard.length,
         itemBuilder: (BuildContext context, int index) => Text(
-          // widget.trackStarService.players.keys.elementAt(index),
-          '',
+          widget.trackStarService.leaderboard.keys.elementAt(index),
           style: const TextStyle(
             color: Color.fromARGB(255, 5, 6, 92),
             fontSize: 18,

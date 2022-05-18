@@ -12,6 +12,12 @@ class WideButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: NeumorphicButton(
+        style: const NeumorphicStyle(
+          color: Color.fromARGB(255, 49, 69, 106),
+          lightSource: LightSource.topLeft,
+        ),
+        padding: const EdgeInsets.all(16),
+        onPressed: () => onPressed(context),
         child: Align(
           alignment: Alignment.center,
           child: Text(
@@ -22,12 +28,6 @@ class WideButton extends StatelessWidget {
             ),
           ),
         ),
-        style: const NeumorphicStyle(
-          color: Color.fromARGB(255, 49, 69, 106),
-          lightSource: LightSource.topLeft,
-        ),
-        padding: const EdgeInsets.all(16),
-        onPressed: () => onPressed(context),
       ),
     );
   }
