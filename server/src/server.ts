@@ -1,7 +1,7 @@
 import { inspect } from 'util';
 import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
-import { Game, GuessResult, Standing } from './game';
+import { Game, State, GuessResult, Standing } from './game';
 
 const DEBUG = true;
 
@@ -90,13 +90,13 @@ class Room {
     id: string
     players: Array<Player>
     creator: Player
-    game: Game | null
+    game: Game
 
     constructor(id: string, creator: Player) {
         this.id = id;
         this.creator = creator;
         this.players = [];
-        this.game = null;
+        this.game = new Game();
     }
 
     /** Send a message to all players */
@@ -120,12 +120,12 @@ class Room {
     addPlayer(player: Player) {
         this.players.push(player);
         this.notifyPlayersChanged();
-        this.game?.addOrResetPlayer(player.name);
-        if (this.game) {
+        this.game.addPlayer(player.name);
+        if (this.game.state != State.LOBBY) {
             this.sendOne(player, {
                 topic: Topic.GAME_CONFIG,
-                time_between_tracks: this.game!.secs_between_tracks,
-                tracks_per_round: this.game!.tracks_per_round
+                time_between_tracks: this.game.secs_between_tracks!,
+                tracks_per_round: this.game.tracks_per_round!
             });
         }
     }
@@ -133,14 +133,16 @@ class Room {
     deletePlayer(player: Player) {
         this.players = this.players.filter(p => p != player);
         this.notifyPlayersChanged();
-        this.game?.deletePlayer(player.name);
+        this.game.deletePlayer(player.name);
     }
 
     setGameConfig(tracks_per_round: number, time_between_tracks: number) {
-        this.game = new Game(tracks_per_round, time_between_tracks);
-        for (const player of this.players) {
-            this.game.addOrResetPlayer(player.name);
+        //Setting game config should only be done from the lobby
+        if (this.game.state != State.LOBBY) {
+            return;
         }
+
+        this.game.setGameConfig(tracks_per_round, time_between_tracks);
         this.sendAll({
             topic: Topic.GAME_CONFIG,
             time_between_tracks: time_between_tracks,
@@ -148,11 +150,23 @@ class Room {
         });
     }
 
+    /**
+     * Start a round, in which multiple tracks are played. After all tracks are
+     * played, the room creator can start a new round. The leaderboard is reset
+     * before each round.
+     */
     startRound() {
-        this.game!.resetLeaderboard();
+        //Round should only start from lobby or between rounds
+        if (this.game.state != State.LOBBY && this.game.state != State.BETWEEN_ROUNDS) {
+            return;
+        }
+
+        this.game.state = State.BETWEEN_TRACKS;
+        this.game.resetLeaderboard();
         this.selectTrack();
     }
 
+    /** Select a track to play (called halfway through the wait period) */
     selectTrack() {
         //Stop recurring if room has been deleted
         if (!rooms.has(this.id)) {
@@ -160,28 +174,47 @@ class Room {
         }
 
         //Send the next track to play
-        const track = this.game!.nextTrack();
+        const track = this.game.nextTrack();
         this.sendAll({
             topic: Topic.TRACK_INFO,
             url: track.preview_url!,
             title: track.title,
             aritsts: track.artists,
-            track_number: this.game!.current_track_number,
-            when_to_start: Date.now() + this.game!.secs_between_tracks / 2 * 1000  //now + wait/2
+            track_number: this.game.current_track_number,
+            when_to_start: Date.now() + (this.game.secs_between_tracks! / 2) * 1000  //now + wait/2
         });
 
-        //Update the leaderboard once the next track and subsequent wait period end
-        setTimeout(() => { this.updateLeaderboard(true) }, (this.game!.secs_between_tracks * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
+        //Set game state to TRACK once the track starts playing
+        setTimeout(() => { this.game.state = State.TRACK },
+            (this.game.secs_between_tracks! / 2) * 1000);  //now + wait/2
 
-        //Select another track halfway through the next wait period (if we're not through all the tracks yet)
-        if (this.game!.current_track_number <= this.game!.tracks_per_round) {
-            setTimeout(() => { this.selectTrack() }, (this.game!.secs_between_tracks + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait/2
+        //Set game state to BETWEEN_TRACKS once the track ends
+        setTimeout(() => { this.game.state = State.BETWEEN_TRACKS },
+            (this.game.secs_between_tracks! / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track
+
+        //Update the leaderboard once the next track and subsequent wait period end
+        setTimeout(() => { this.updateLeaderboard(true) },
+            (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
+
+        //If round is not over, select another track halfway through the next wait period
+        if (this.game.current_track_number <= this.game.tracks_per_round!) {
+            setTimeout(() => { this.selectTrack() },
+                (this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait/2
+            //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
+        } else {
+            setTimeout(() => { this.game.state = State.BETWEEN_ROUNDS },
+                (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
         }
     }
 
     /** Notify guesser of their correctness and update leaderboard if correct */
     processGuess(player: Player, guess: string, guess_epoch_millis: number) {
-        const result = this.game!.processGuess(player.name, guess, guess_epoch_millis);
+        //Guesses can only be made while a track is playing
+        if (this.game.state != State.TRACK) {
+            return;
+        }
+
+        const result = this.game.processGuess(player.name, guess, guess_epoch_millis);
         this.sendOne(player, {
             topic: Topic.GUESS_RESULT,
             result: result,
@@ -197,16 +230,16 @@ class Room {
      */
     updateLeaderboard(track_end: boolean) {
         if (track_end) {
-            this.game!.endTrack();
+            this.game.endTrack();
         }
         this.sendAll({
             topic: Topic.LEADERBOARD,
-            leaderboard: this.game!.leaderboard
+            leaderboard: this.game.leaderboard
         });
     }
 }
 
-/** When client connects: create player, add player to room (create room first if not exists) */
+/** When client connects: create player, add player to room (create room first if it does not exist) */
 function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player] {
     DEBUG && console.log('Client connected with URL %s', request_url);
     const [room_id, player_name] = request_url.slice(1).split('/');
@@ -250,7 +283,7 @@ function handleMessage(room: Room, player: Player, message_json: string) {
 
     //Ensure message matches one of our defined formats
     if (!ClientWSMessage.guard(message)) {
-        console.log('Not a valid WS message!');
+        DEBUG && console.log('Not a valid WS message!');
     }
 
     //Process message

@@ -1,6 +1,14 @@
 import { getRandomUnplayedTrack, Track } from './tracks';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 
+/** Game state */
+export const enum State {
+    LOBBY,
+    TRACK,
+    BETWEEN_TRACKS,
+    BETWEEN_ROUNDS
+}
+
 /** What a player has gotten correct so far */
 const enum Progress {
     TITLE = 'correct_title',
@@ -38,18 +46,21 @@ interface Completion {
     time: number
 }
 
+/** A game contains rounds, which in turn contain tracks */
 export class Game {
-    tracks_per_round: number
-    secs_between_tracks: number
+    state: State
+    tracks_per_round: number | null
+    secs_between_tracks: number | null
     current_track: Track | null
     current_track_number: number
     played_tracks: Set<Track>
     leaderboard: Map<string, Standing>
     completions: Array<Completion>
 
-    constructor(tracks_per_round: number, secs_between_tracks: number) {
-        this.tracks_per_round = tracks_per_round;
-        this.secs_between_tracks = secs_between_tracks;
+    constructor() {
+        this.state = State.LOBBY;
+        this.tracks_per_round = null;
+        this.secs_between_tracks = null;
         this.current_track = null;
         this.current_track_number = 0;
         this.played_tracks = new Set();
@@ -57,8 +68,13 @@ export class Game {
         this.completions = [];
     }
 
-    /** Add new player to leaderboard, or reset a player's standing */
-    addOrResetPlayer(player: string) {
+    setGameConfig(tracks_per_round: number, secs_between_tracks: number) {
+        this.tracks_per_round = tracks_per_round;
+        this.secs_between_tracks = secs_between_tracks;
+    }
+
+    /** Add new player to leaderboard */
+    addPlayer(player: string) {
         this.leaderboard.set(player, {
             score: 0,
             points_from_current_track: 0,
@@ -72,10 +88,15 @@ export class Game {
         this.leaderboard.delete(player);
     }
 
+    /** Reset a player's standing */
+    resetPlayer(player: string) {
+        this.addPlayer(player);
+    }
+
     /** Reset the standings of all players in the leaderboard */
     resetLeaderboard() {
         for (const player in this.leaderboard) {
-            this.addOrResetPlayer(player);
+            this.resetPlayer(player);
         }
     }
 
@@ -89,7 +110,7 @@ export class Game {
     }
 
     /** Validate a player's guess, update the leaderboard, and return the validation result */
-    processGuess(player: string, guess: string, time: number) : GuessResult {
+    processGuess(player: string, guess: string, time: number): GuessResult {
         const standing = this.leaderboard.get(player)!;
         const progress = standing.progress;
 
