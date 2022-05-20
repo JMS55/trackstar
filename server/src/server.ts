@@ -1,11 +1,14 @@
-import { Server, WebSocket } from 'ws';
 import { inspect } from 'util';
-import { Game, GuessResult, Standing } from './game';
+import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
+import { Game, GuessResult, Standing } from './game';
 
 const DEBUG = true;
-const TRACK_PLAY_LENGTH = 30;
 
+/** We use Spotify previews, which are 30 seconds long */
+const TRACK_PLAY_LENGTH_SECS = 30;
+
+/** Topics for server/client messages */
 const enum Topic {
     PLAYERS_CHANGED = 'players_changed',
     GAME_CONFIG = 'game_config',
@@ -17,21 +20,25 @@ const enum Topic {
     MAKE_GUESS_COMMAND = 'make_guess_command'
 }
 
-// SERVER->CLIENT MESSAGES
+/////////////////////////////////////////////
 
+/** All Server -> Client messages */
 type ServerWSMessage = WSPlayersChanged | WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
 
+/** A player has entered or left the room */
 interface WSPlayersChanged {
     topic: Topic.PLAYERS_CHANGED,
     players: string[]
 }
 
+/** Configuration of the room's game */
 interface WSGameConfig {
     topic: Topic.GAME_CONFIG,
     time_between_tracks: number,
     tracks_per_round: number
 }
 
+/** Info for the next track to be played */
 interface WSTrackInfo {
     topic: Topic.TRACK_INFO,
     url: string,
@@ -51,9 +58,7 @@ interface WSLeaderBoard {
     leaderboard: Map<string, Standing>
 };
 
-// CLIENT->SERVER MESSAGES
-// these look a little different because they're validated at runtime,
-// but everything is the same generally
+/////////////////////////////////////////////
 
 const WSStartGame = Record({
     topic: Literal(Topic.START_GAME_COMMAND),
@@ -69,12 +74,12 @@ const WSMakeGuess = Record({
     topic: Literal(Topic.MAKE_GUESS_COMMAND),
     guess: String,
     time_of_guess: Number
-})
+});
 
+/** All Client -> Server messages */
 const ClientWSMessage = Union(WSStartGame, WSStartRound, WSMakeGuess);
 
-// END WS MESSAGES
-
+/////////////////////////////////////////////
 
 interface Player {
     client: WebSocket,
@@ -94,13 +99,15 @@ class Room {
         this.game = null;
     }
 
-    sendAll(json: ServerWSMessage) {
-        this.players.forEach(player => this.sendOne(player, json));
+    /** Send a message to all players */
+    sendAll(message: ServerWSMessage) {
+        this.players.forEach(player => this.sendOne(player, message));
     }
 
-    sendOne(player: Player, json: ServerWSMessage) {
-        DEBUG && console.log('Message sent to client:\n' + inspect(json));
-        player.client.send(JSON.stringify(json));
+    /** Send a message to a single player */
+    sendOne(player: Player, message: ServerWSMessage) {
+        DEBUG && console.log('Message sent to client:\n' + inspect(message));
+        player.client.send(JSON.stringify(message));
     }
 
     notifyPlayersChanged() {
@@ -117,7 +124,7 @@ class Room {
         if (this.game) {
             this.sendOne(player, {
                 topic: Topic.GAME_CONFIG,
-                time_between_tracks: this.game!.time_between_tracks,
+                time_between_tracks: this.game!.secs_between_tracks,
                 tracks_per_round: this.game!.tracks_per_round
             });
         }
@@ -143,11 +150,16 @@ class Room {
 
     startRound() {
         this.game!.resetLeaderboard();
-        setTimeout(() => { this.selectTrack() }, this.game!.time_between_tracks / 2 * 1000);
+        this.selectTrack();
     }
 
     selectTrack() {
-        if (!rooms.has(this.id)) return;
+        //Stop recurring if room has been deleted
+        if (!rooms.has(this.id)) {
+            return;
+        }
+
+        //Send the next track to play
         const track = this.game!.nextTrack();
         this.sendAll({
             topic: Topic.TRACK_INFO,
@@ -155,16 +167,21 @@ class Room {
             title: track.title,
             aritsts: track.artists,
             track_number: this.game!.current_track_number,
-            when_to_start: Date.now() + this.game!.time_between_tracks / 2
+            when_to_start: Date.now() + this.game!.secs_between_tracks / 2 * 1000  //now + wait/2
         });
+
+        //Update the leaderboard once the next track and subsequent wait period end
+        setTimeout(() => { this.updateLeaderboard(true) }, (this.game!.secs_between_tracks * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
+
+        //Select another track halfway through the next wait period (if we're not through all the tracks yet)
         if (this.game!.current_track_number <= this.game!.tracks_per_round) {
-            setTimeout(() => { this.selectTrack() }, (this.game!.time_between_tracks + TRACK_PLAY_LENGTH) * 1000);
-            setTimeout(() => { this.updateLeaderboard(true) }, (this.game!.time_between_tracks / 2 + TRACK_PLAY_LENGTH) * 1000);
+            setTimeout(() => { this.selectTrack() }, (this.game!.secs_between_tracks + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait/2
         }
     }
 
-    processGuess(player: Player, guess: string, time_of_guess: number) {
-        const result = this.game!.processGuess(player.name, guess, time_of_guess);
+    /** Notify guesser of their correctness and update leaderboard if correct */
+    processGuess(player: Player, guess: string, guess_epoch_millis: number) {
+        const result = this.game!.processGuess(player.name, guess, guess_epoch_millis);
         this.sendOne(player, {
             topic: Topic.GUESS_RESULT,
             result: result,
@@ -174,6 +191,10 @@ class Room {
         }
     }
 
+    /**
+     * Update the leaderboard and send it to all players
+     * @param track_end Whether this update is being made because a track ended
+     */
     updateLeaderboard(track_end: boolean) {
         if (track_end) {
             this.game!.endTrack();
@@ -185,6 +206,7 @@ class Room {
     }
 }
 
+/** When client connects: create player, add player to room (create room first if not exists) */
 function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player] {
     DEBUG && console.log('Client connected with URL %s', request_url);
     const [room_id, player_name] = request_url.slice(1).split('/');
@@ -204,6 +226,7 @@ function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player]
     return [room, new_player];
 }
 
+/** When client disconnects: delete player, delete room if empty */
 function handleClosedConnection(room: Room, player: Player) {
     DEBUG && console.log('Client disconnected for player %s', player.name);
     room.deletePlayer(player);
@@ -213,31 +236,37 @@ function handleClosedConnection(room: Room, player: Player) {
     }
 }
 
-function handleMessage(room: Room, player: Player, message: string) {
-    let message_obj;
+/** Handle incoming message from client */
+function handleMessage(room: Room, player: Player, message_json: string) {
+    //Try parsing message JSON
+    let message;
     try {
-        message_obj = JSON.parse(message);
+        message = JSON.parse(message_json);
+        DEBUG && console.log('Message received from client:\n' + inspect(message));
     } catch (e) {
-        console.log('Not JSON');
+        DEBUG && console.log('Message received from client is not valid JSON:\n' + message_json);
         return;
     }
-    DEBUG && console.log('Message received from client:\n' + inspect(message_obj));
-    if (ClientWSMessage.guard(message_obj)) {
-        switch (message_obj.topic) {
-            case Topic.START_GAME_COMMAND:
-                room.setGameConfig(message_obj.tracks_per_round, message_obj.time_between_tracks)
-            case Topic.START_ROUND_COMMAND:
-                room.startRound();
-                break;
-            case Topic.MAKE_GUESS_COMMAND:
-                room.processGuess(player, message_obj.guess, message_obj.time_of_guess);
-                break;
-        }
-    } else {
+
+    //Ensure message matches one of our defined formats
+    if (!ClientWSMessage.guard(message)) {
         console.log('Not a valid WS message!');
+    }
+
+    //Process message
+    switch (message.topic) {
+        case Topic.START_GAME_COMMAND:
+            room.setGameConfig(message.tracks_per_round, message.time_between_tracks);  //Missing break is intentional
+        case Topic.START_ROUND_COMMAND:
+            room.startRound();
+            break;
+        case Topic.MAKE_GUESS_COMMAND:
+            room.processGuess(player, message.guess, message.time_of_guess);
+            break;
     }
 }
 
+//Start server
 const rooms = new Map();
 const wss = new Server({ port: 8080 })
 wss.on("connection", (ws, request) => {

@@ -17,4 +17,5 @@ export function getRandomUnplayedTrack(played_tracks: Set<Track>) {
     return track;
 }
 
+/** Load tracks array from tracks.json file */
 tracks = JSON.parse(fs.readFileSync('tracks.json', 'utf8'));
