@@ -5,7 +5,7 @@ import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
 
 const logger = winston.createLogger({
-    'transports': [ new winston.transports.Console() ],
+    'transports': [new winston.transports.Console()],
     'format': format.combine(
         format.colorize(),
         format.timestamp(),
@@ -215,8 +215,9 @@ class Room {
         if (this.game.current_track_number <= this.game.tracks_per_round!) {
             setTimeout(() => { this.selectTrack() },
                 (this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait/2
-            //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
-        } else {
+        }
+        //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
+        else {
             setTimeout(() => { this.setGameState(State.BETWEEN_ROUNDS) },
                 (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
         }
