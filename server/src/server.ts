@@ -1,9 +1,18 @@
+import winston, { format } from 'winston';
 import { inspect } from 'util';
 import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
 
-const DEBUG = true;
+const logger = winston.createLogger({
+    'transports': [ new winston.transports.Console() ],
+    'format': format.combine(
+        format.colorize(),
+        format.timestamp(),
+        format.align(),
+        format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
+    )
+});
 
 /** We use Spotify previews, which are 30 seconds long */
 const TRACK_PLAY_LENGTH_SECS = 30;
@@ -106,7 +115,7 @@ class Room {
 
     /** Send a message to a single player */
     sendOne(player: Player, message: ServerWSMessage) {
-        DEBUG && console.log('Message sent to client:\n' + inspect(message));
+        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n{inspect(message)}`);
         player.client.send(JSON.stringify(message));
     }
 
@@ -150,6 +159,11 @@ class Room {
         });
     }
 
+    setGameState(state: State) {
+        logger.debug(`Game state of room ${this.id} is now ${State[state]}`);
+        this.game.state = state;
+    }
+
     /**
      * Start a round, in which multiple tracks are played. After all tracks are
      * played, the room creator can start a new round. The leaderboard is reset
@@ -161,8 +175,9 @@ class Room {
             return;
         }
 
-        this.game.state = State.BETWEEN_TRACKS;
+        this.setGameState(State.BETWEEN_TRACKS);
         this.game.resetLeaderboard();
+        this.sendLeaderboard();
         this.selectTrack();
     }
 
@@ -185,15 +200,15 @@ class Room {
         });
 
         //Set game state to TRACK once the track starts playing
-        setTimeout(() => { this.game.state = State.TRACK },
+        setTimeout(() => { this.setGameState(State.TRACK) },
             (this.game.secs_between_tracks! / 2) * 1000);  //now + wait/2
 
         //Set game state to BETWEEN_TRACKS once the track ends
-        setTimeout(() => { this.game.state = State.BETWEEN_TRACKS },
+        setTimeout(() => { this.setGameState(State.BETWEEN_TRACKS) },
             (this.game.secs_between_tracks! / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track
 
         //Update the leaderboard once the next track and subsequent wait period end
-        setTimeout(() => { this.updateLeaderboard(true) },
+        setTimeout(() => { this.game.endTrack(); this.sendLeaderboard() },
             (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
 
         //If round is not over, select another track halfway through the next wait period
@@ -202,7 +217,7 @@ class Room {
                 (this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait/2
             //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
         } else {
-            setTimeout(() => { this.game.state = State.BETWEEN_ROUNDS },
+            setTimeout(() => { this.setGameState(State.BETWEEN_ROUNDS) },
                 (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
         }
     }
@@ -220,18 +235,12 @@ class Room {
             result: result,
         });
         if (result != GuessResult.INCORRECT) {
-            this.updateLeaderboard(false);
+            this.sendLeaderboard();
         }
     }
 
-    /**
-     * Update the leaderboard and send it to all players
-     * @param track_end Whether this update is being made because a track ended
-     */
-    updateLeaderboard(track_end: boolean) {
-        if (track_end) {
-            this.game.endTrack();
-        }
+    /** Send the current leaderboard to all players */
+    sendLeaderboard() {
         this.sendAll({
             topic: Topic.LEADERBOARD,
             leaderboard: this.game.leaderboard
@@ -241,7 +250,7 @@ class Room {
 
 /** When client connects: create player, add player to room (create room first if it does not exist) */
 function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player] {
-    DEBUG && console.log('Client connected with URL %s', request_url);
+    logger.debug(`Client connected with URL... ${request_url}`);
     const [room_id, player_name] = request_url.slice(1).split('/');
     const new_player: Player = {
         client: ws,
@@ -251,7 +260,7 @@ function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player]
     if (rooms.has(room_id)) {
         room = rooms.get(room_id);
     } else {
-        DEBUG && console.log('Room created with ID %s', room_id);
+        logger.debug(`Room ${room_id} has been created`);
         room = new Room(room_id, new_player);
     }
     rooms.set(room_id, room);
@@ -261,10 +270,10 @@ function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player]
 
 /** When client disconnects: delete player, delete room if empty */
 function handleClosedConnection(room: Room, player: Player) {
-    DEBUG && console.log('Client disconnected for player %s', player.name);
+    logger.debug(`Player ${player.name} has left room ${room.id}`);
     room.deletePlayer(player);
     if (room.players.length == 0) {
-        DEBUG && console.log('Room deleted with ID %s', room.id);
+        logger.debug(`Room ${room.id} has been deleted`);
         rooms.delete(room.id);
     }
 }
@@ -275,16 +284,18 @@ function handleMessage(room: Room, player: Player, message_json: string) {
     let message;
     try {
         message = JSON.parse(message_json);
-        DEBUG && console.log('Message received from client:\n' + inspect(message));
     } catch (e) {
-        DEBUG && console.log('Message received from client is not valid JSON:\n' + message_json);
+        logger.error(`Message received from player ${player.name} for room ${room.id} is not valid JSON...\n${message_json}`);
         return;
     }
 
     //Ensure message matches one of our defined formats
     if (!ClientWSMessage.guard(message)) {
-        DEBUG && console.log('Not a valid WS message!');
+        logger.error(`Message received from player ${player.name} for room ${room.id} is not in an accepted format...\n${inspect(message)}`);
+        return;
     }
+
+    logger.debug(`Message received from player ${player.name} for room ${room.id}...\n${inspect(message)}`);
 
     //Process message
     switch (message.topic) {

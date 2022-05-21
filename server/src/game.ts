@@ -2,7 +2,7 @@ import { getRandomUnplayedTrack, Track } from './tracks';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 
 /** Game state */
-export const enum State {
+export enum State {
     LOBBY,
     TRACK,
     BETWEEN_TRACKS,
