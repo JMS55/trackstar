@@ -121,8 +121,9 @@ class Room {
 
     /** Send a message to a single player */
     sendOne(player: Player, message: ServerWSMessage) {
-        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n${inspect(message)}`);
-        player.client.send(JSON.stringify(message, (_key, value) => value instanceof Map ? Object.fromEntries(value) : value));
+        const message_json: string = JSON.stringify(message, (_key, value) => value instanceof Map ? Object.fromEntries(value) : value)
+        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n${prettyJson(message_json)}`);
+        player.client.send(message_json);
     }
 
     notifyPlayersChanged() {
@@ -298,11 +299,11 @@ function handleMessage(room: Room, player: Player, message_json: string) {
 
     //Ensure message matches one of our defined formats
     if (!ClientWSMessage.guard(message)) {
-        logger.error(`Message received from player ${player.name} for room ${room.id} is not in an accepted format...\n${inspect(message)}`);
+        logger.error(`Message received from player ${player.name} for room ${room.id} is not in an accepted format...\n${prettyJson(message_json)}`);
         return;
     }
 
-    logger.debug(`Message received from player ${player.name} for room ${room.id}...\n${inspect(message)}`);
+    logger.debug(`Message received from player ${player.name} for room ${room.id}...\n${prettyJson(message_json)}`);
 
     //Process message
     switch (message.topic) {
@@ -315,6 +316,11 @@ function handleMessage(room: Room, player: Player, message_json: string) {
             room.processGuess(player, message.guess, message.time_of_guess);
             break;
     }
+}
+
+/** Return pretty JSON string given any valid JSON string */
+function prettyJson(input: string) {
+    return JSON.stringify(input, JSON.parse(input), 2);
 }
 
 //Start server
