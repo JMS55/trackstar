@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'home_page.dart';
 
 void main() {
@@ -10,15 +10,13 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const NeumorphicApp(
+    return MaterialApp(
       title: 'TrackStar',
-      themeMode: ThemeMode.light,
-      theme: NeumorphicThemeData(
-        baseColor: Color.fromARGB(255, 231, 235, 238),
-        intensity: 0.8,
-        depth: 8,
+      home: const HomePage(),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: const Color.fromARGB(255, 102, 80, 164),
       ),
-      home: HomePage(),
     );
   }
 }

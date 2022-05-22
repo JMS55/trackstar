@@ -29,8 +29,13 @@ class TrackStarService {
   String trackTitle = "";
   List<String> trackArtists = [];
 
-  TrackStarService({int? roomId, required this.userName}) {
+  TrackStarService(
+      {int? roomId,
+      required this.userName,
+      required void Function(void Function())? changeSignal}) {
     this.roomId = roomId ?? Random().nextInt(99999);
+
+    leaderboard = {userName: Standing(0, 0, Progress.noneCorrect, Place.none)};
 
     audioPlayer.onPlayerCompletion.listen((_) {
       gameState = GameState.betweenTracks;

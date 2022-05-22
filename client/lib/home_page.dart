@@ -1,51 +1,39 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
-import 'enter_code_page.dart';
-import 'enter_name_page.dart';
-import 'widgets/page_card.dart';
-import 'widgets/wide_button.dart';
+import 'package:flutter/material.dart';
+import 'create_room_page.dart';
+import 'join_room_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int selectedPageIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
-    return PageCard(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const FittedBox(
-            fit: BoxFit.contain,
-            child: Text(
-              'TrackStar',
-              style: TextStyle(
-                color: Color.fromARGB(255, 5, 6, 92),
-                fontSize: 72,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+    return Scaffold(
+      body: SafeArea(
+        child: selectedPageIndex == 0
+            ? const CreateRoomPage()
+            : const JoinRoomPage(),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedPageIndex,
+        onDestinationSelected: (i) => setState(() => selectedPageIndex = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.add_rounded),
+            label: 'Create',
           ),
-          const SizedBox(height: 48),
-          WideButton(label: 'Create Room', onPressed: createRoom),
-          const SizedBox(height: 24),
-          WideButton(label: 'Join Room', onPressed: joinRoom),
+          NavigationDestination(
+            icon: Icon(Icons.door_front_door_outlined),
+            label: 'Join',
+          )
         ],
       ),
-    );
-  }
-
-  void createRoom(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const EnterNamePage(isRoomCreator: true),
-      ),
-    );
-  }
-
-  void joinRoom(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const EnterCodePage()),
     );
   }
 }
