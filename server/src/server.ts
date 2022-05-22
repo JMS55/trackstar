@@ -320,7 +320,7 @@ function handleMessage(room: Room, player: Player, message_json: string) {
 
 /** Return pretty JSON string given any valid JSON string */
 function prettyJson(input: string) {
-    return JSON.stringify(input, JSON.parse(input), 2);
+    return JSON.stringify(JSON.parse(input), null, 2);
 }
 
 //Start server
