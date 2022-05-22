@@ -106,12 +106,14 @@ class Room {
     players: Array<Player>
     creator: Player
     game: Game
+    timeouts: Array<NodeJS.Timeout>
 
     constructor(id: string, creator: Player) {
         this.id = id;
         this.creator = creator;
         this.players = [];
         this.game = new Game();
+        this.timeouts = [];
     }
 
     /** Send a message to all players */
@@ -188,13 +190,18 @@ class Room {
         this.selectTrack();
     }
 
+    /** Start a timeout and keep track of its existence */
+    addTimeout(delay_secs: number, callback: () => void) {
+        this.timeouts.push(setTimeout(callback, delay_secs * 1000));
+    }
+
+    /** Clear every timeout that has ever been started for this room */
+    clearTimeouts() {
+        this.timeouts.forEach(timeout => clearTimeout(timeout));
+    }
+
     /** Select a track to play (called halfway through the wait period) */
     selectTrack() {
-        //Stop recurring if room has been deleted
-        if (!rooms.has(this.id)) {
-            return;
-        }
-
         //Send the next track to play
         const track = this.game.nextTrack();
         this.sendAll({
@@ -207,26 +214,26 @@ class Room {
         });
 
         //Set game state to TRACK once the track starts playing
-        setTimeout(() => { this.setGameState(State.TRACK) },
-            (this.game.secs_between_tracks! / 2) * 1000);  //now + wait/2
+        this.addTimeout(this.game.secs_between_tracks! / 2, //now + wait/2
+            () => this.setGameState(State.TRACK));
 
         //Set game state to BETWEEN_TRACKS once the track ends
-        setTimeout(() => { this.setGameState(State.BETWEEN_TRACKS) },
-            (this.game.secs_between_tracks! / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track
+        this.addTimeout(this.game.secs_between_tracks! / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track
+            () => this.setGameState(State.BETWEEN_TRACKS));
 
         //Update the leaderboard once the next track and subsequent wait period end
-        setTimeout(() => { this.game.endTrack(); this.sendLeaderboard() },
-            (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
+        this.addTimeout(this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
+            () => { this.game.endTrack(); this.sendLeaderboard() });
 
         //If round is not over, select another track halfway through the next wait period
         if (this.game.current_track_number < this.game.tracks_per_round!) {
-            setTimeout(() => { this.selectTrack() },
-                (this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait/2
+            this.addTimeout(this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait/2
+                () => this.selectTrack());
         }
         //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
         else {
-            setTimeout(() => { this.setGameState(State.BETWEEN_ROUNDS) },
-                (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
+            this.addTimeout(this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
+                () => this.setGameState(State.BETWEEN_ROUNDS));
         }
     }
 
@@ -282,6 +289,7 @@ function handleClosedConnection(room: Room, player: Player) {
     room.deletePlayer(player);
     if (room.players.length == 0) {
         logger.debug(`Room ${room.id} has been deleted`);
+        room.clearTimeouts();
         rooms.delete(room.id);
     }
 }

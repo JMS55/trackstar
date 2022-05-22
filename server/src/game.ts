@@ -170,7 +170,7 @@ export class Game {
 
     /** Add points from current track to scores and reset completions */
     endTrack() {
-        this.leaderboard.forEach((standing) => {
+        this.leaderboard.forEach(standing => {
             standing.score += standing.points_from_current_track;
             standing.points_from_current_track = 0;
             standing.progress = Progress.NONE;
