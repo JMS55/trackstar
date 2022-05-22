@@ -19,6 +19,7 @@
   "devDependencies": {
     "@types/node-fetch": "^2.6.1",
     "@types/spotify-web-api-node": "^5.0.7",
-    "@types/ws": "^8.5.3"
+    "@types/ws": "^8.5.3",
+    "prettier": "2.6.2"
   }
 }

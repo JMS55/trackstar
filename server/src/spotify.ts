@@ -1,7 +1,8 @@
 import fs from 'fs';
 import fetch from 'node-fetch';
 import Spotify from 'spotify-web-api-node';
-import pkg from 'typescript'; const { sys } = pkg;  //Workaround for import error
+import pkg from 'typescript';
+const { sys } = pkg; //Workaround for import error
 import { Track } from './tracks';
 
 /** Max tracks Spotify will let us read from a playlist */
@@ -16,7 +17,7 @@ var tracks: Track[] = [];
 /** Delete any tracks that don't have a preview URL */
 function removeTracksWithNullURL() {
     const goodTracks: Track[] = [];
-    tracks.forEach(track => {
+    tracks.forEach((track) => {
         if (track.preview_url) {
             goodTracks.push(track);
         }
@@ -30,19 +31,19 @@ async function pullTracks(playlist_id: string, token: string, offset: number) {
     const data = await spotify.getPlaylistTracks(playlist_id, {
         offset: offset,
         limit: TRACK_PULL_LIMIT,
-        fields: 'items.track(id,name,preview_url,artists.name)'
+        fields: 'items.track(id,name,preview_url,artists.name)',
     });
 
     //Convert to track objects and add to track array
     const items = data.body.items;
-    items.forEach(item => {
+    items.forEach((item) => {
         const track = item.track;
-        const artists: string[] = track.artists.map(artist => artist.name);
+        const artists: string[] = track.artists.map((artist) => artist.name);
         tracks.push({
             id: track.id,
             preview_url: track.preview_url,
             title: track.name,
-            artists: artists
+            artists: artists,
         });
     });
 
@@ -69,21 +70,31 @@ async function fillMissingUrls() {
         const embed_url = 'https://open.spotify.com/embed/track/' + track.id;
         const AbortController = globalThis.AbortController;
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), WEB_SCRAPE_TIMEOUT);
+        const timeout = setTimeout(
+            () => controller.abort(),
+            WEB_SCRAPE_TIMEOUT
+        );
 
         //Attempt to scrape the embed page
         try {
-            const response = await fetch(embed_url, { signal: controller.signal });
+            const response = await fetch(embed_url, {
+                signal: controller.signal,
+            });
             const body = await response.text();
             const tail = body.substring(body.indexOf('preview_url') + 20);
-            const preview_url_encoded = tail.substring(0, tail.indexOf('%3Fcid%3D'));
-            const preview_url = preview_url_encoded.replace('%3A', ':').replace(/%2F/g, '/');
+            const preview_url_encoded = tail.substring(
+                0,
+                tail.indexOf('%3Fcid%3D')
+            );
+            const preview_url = preview_url_encoded
+                .replace('%3A', ':')
+                .replace(/%2F/g, '/');
             track.preview_url = preview_url;
         } catch (error) {
         } finally {
             clearTimeout(timeout);
         }
-    };
+    }
 }
 
 /** Update tracks.json with the tracks from the given playlist */
@@ -97,7 +108,7 @@ async function updateCache(playlist_id: string, access_token: string) {
 
 const args = process.argv.slice(2);
 if (args.length != 2) {
-    console.error("Usage: npm run update_tracks <playlist_id> <access_token>");
+    console.error('Usage: npm run update_tracks <playlist_id> <access_token>');
     sys.exit(1);
 }
 const [playlist_id, access_token] = args;
