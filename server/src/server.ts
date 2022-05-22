@@ -58,11 +58,13 @@ interface WSTrackInfo {
     when_to_start: number
 }
 
+/** Correctness of player's guess */
 interface WSGuessResult {
     topic: Topic.GUESS_RESULT,
     result: GuessResult
 };
 
+/** Leader board of the room's game */
 interface WSLeaderBoard {
     topic: Topic.LEADERBOARD,
     leaderboard: Map<string, Standing>
@@ -70,16 +72,19 @@ interface WSLeaderBoard {
 
 /////////////////////////////////////////////
 
+/** Command to start this room's game */
 const WSStartGame = Record({
     topic: Literal(Topic.START_GAME_COMMAND),
     tracks_per_round: Number,
     time_between_tracks: Number
 });
 
+/** Command to start another round */
 const WSStartRound = Record({
     topic: Literal(Topic.START_ROUND_COMMAND)
 });
 
+/** A player making a guess */
 const WSMakeGuess = Record({
     topic: Literal(Topic.MAKE_GUESS_COMMAND),
     guess: String,
@@ -117,7 +122,7 @@ class Room {
     /** Send a message to a single player */
     sendOne(player: Player, message: ServerWSMessage) {
         logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n${inspect(message)}`);
-        player.client.send(JSON.stringify(message));
+        player.client.send(JSON.stringify(message, (_key, value) => value instanceof Map ? Object.fromEntries(value) : value));
     }
 
     notifyPlayersChanged() {
