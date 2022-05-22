@@ -219,7 +219,7 @@ class Room {
             (this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait
 
         //If round is not over, select another track halfway through the next wait period
-        if (this.game.current_track_number <= this.game.tracks_per_round!) {
+        if (this.game.current_track_number < this.game.tracks_per_round!) {
             setTimeout(() => { this.selectTrack() },
                 (this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS) * 1000);  //now + wait/2 + track + wait/2
         }
