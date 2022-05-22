@@ -11,7 +11,8 @@ const logger = winston.createLogger({
         format.timestamp(),
         format.align(),
         format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
-    )
+    ),
+    'level': process.env.TS_LOG_LEVEL ?? 'debug'
 });
 
 /** We use Spotify previews, which are 30 seconds long */
