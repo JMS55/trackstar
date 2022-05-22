@@ -116,7 +116,7 @@ class Room {
 
     /** Send a message to a single player */
     sendOne(player: Player, message: ServerWSMessage) {
-        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n{inspect(message)}`);
+        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n${inspect(message)}`);
         player.client.send(JSON.stringify(message));
     }
 
