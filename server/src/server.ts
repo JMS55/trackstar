@@ -320,3 +320,4 @@ wss.on("connection", (ws, request) => {
     ws.on('close', () => handleClosedConnection(room, player));
     ws.on('message', data => handleMessage(room, player, data.toString()));
 });
+logger.info('TrackStar server started!');
