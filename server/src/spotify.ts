@@ -1,9 +1,10 @@
 import fs from 'fs';
 import fetch from 'node-fetch';
 import Spotify from 'spotify-web-api-node';
-import pkg from 'typescript';
-const { sys } = pkg; //Workaround for import error
 import { Track } from './tracks';
+import { logger } from './server';
+import { sys } from 'typescript';
+import { TrackList } from './data';
 
 /** Max tracks Spotify will let us read from a playlist */
 const TRACK_PULL_LIMIT = 100;
@@ -11,46 +12,49 @@ const TRACK_PULL_LIMIT = 100;
 /** Max time to try scraping a preview URL */
 const WEB_SCRAPE_TIMEOUT = 500;
 
-const spotify = new Spotify();
-var tracks: Track[] = [];
+const API_INSTANCE = new Spotify();
+
 
 /** Delete any tracks that don't have a preview URL */
-function removeTracksWithNullURL() {
-    const goodTracks: Track[] = [];
-    tracks.forEach((track) => {
-        if (track.preview_url) {
-            goodTracks.push(track);
-        }
-    });
-    tracks = goodTracks;
+function removeTracksWithNullURL(tracks: TrackList) : TrackList {
+    tracks.filter((t) => t.preview_url);
+    return tracks;
 }
 
 /** Recursively get all tracks from the playlist with the given ID */
-async function pullTracks(playlist_id: string, token: string, offset: number) {
+async function pullTracks(playlist_id: string, token: string, offset = 0): Promise<TrackList> {
     //Get raw track data
-    const data = await spotify.getPlaylistTracks(playlist_id, {
+    const data = await API_INSTANCE.getPlaylistTracks(playlist_id, {
         offset: offset,
         limit: TRACK_PULL_LIMIT,
         fields: 'items.track(id,name,preview_url,artists.name)',
     });
 
+    //Check if call was successful
+    if (data.statusCode != 200) {
+        logger.warn(`Error response from Spotify: ${data.body}`);
+        return [];
+    }
+
     //Convert to track objects and add to track array
-    const items = data.body.items;
-    items.forEach((item) => {
+    //const items = data.body.items;
+    const songItems = data.body.items.map((item) => {
         const track = item.track;
         const artists: string[] = track.artists.map((artist) => artist.name);
-        tracks.push({
+        return {
             id: track.id,
             preview_url: track.preview_url,
             title: track.name,
             artists: artists,
-        });
+        };
     });
 
     //Recur if last request returned max items
-    if (items.length == TRACK_PULL_LIMIT) {
-        await pullTracks(playlist_id, token, offset + TRACK_PULL_LIMIT);
+    if (songItems.length == TRACK_PULL_LIMIT) {
+        const newTracks = await pullTracks(playlist_id, token, offset + TRACK_PULL_LIMIT);
+        return songItems.concat(newTracks);
     }
+    return songItems;
 }
 
 /**
@@ -59,11 +63,11 @@ async function pullTracks(playlist_id: string, token: string, offset: number) {
  * URL. Sometimes, though, the URL will still be missing or the request will
  * take too long, so we set a timeout and try/catch the whole process.
  */
-async function fillMissingUrls() {
-    for (const track of tracks) {
+async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
+    const trackProm = Promise.all(tracks.map(async (track) => {
         //Continue if track already has a preview URL
         if (track.preview_url) {
-            continue;
+            return track;
         }
 
         //Configure web request
@@ -90,19 +94,20 @@ async function fillMissingUrls() {
                 .replace('%3A', ':')
                 .replace(/%2F/g, '/');
             track.preview_url = preview_url;
-        } catch (error) {
+            return track;
         } finally {
             clearTimeout(timeout);
         }
-    }
+    }));
+    return await trackProm;
 }
 
 /** Update tracks.json with the tracks from the given playlist */
-async function updateCache(playlist_id: string, access_token: string) {
-    spotify.setAccessToken(access_token);
-    await pullTracks(playlist_id, access_token, 0);
-    await fillMissingUrls();
-    removeTracksWithNullURL();
+export async function fetchTracks(playlist_id: string, access_token: string) {
+    API_INSTANCE.setAccessToken(access_token);
+    let tracks = await pullTracks(playlist_id, access_token, 0);
+    tracks = await fillMissingUrls(tracks);
+    tracks = removeTracksWithNullURL(tracks);
     fs.writeFileSync('tracks.json', JSON.stringify(tracks));
 }
 
@@ -112,4 +117,4 @@ if (args.length != 2) {
     sys.exit(1);
 }
 const [playlist_id, access_token] = args;
-updateCache(playlist_id!, access_token!);
+fetchTracks(playlist_id!, access_token!);
