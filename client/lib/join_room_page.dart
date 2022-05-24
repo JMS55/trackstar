@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'lobby_page.dart';
 import 'logo_widget.dart';
+import 'text_field_m3_widget.dart';
 
 class JoinRoomPage extends StatefulWidget {
   const JoinRoomPage({Key? key}) : super(key: key);
@@ -25,24 +26,23 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 48),
           child: Column(children: [
-            TextField(
+            TextFieldM3(
               controller: roomIdController,
+              hintText: 'Room Code',
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: 'Room Code'),
             ),
             const SizedBox(height: 12),
-            TextField(
+            TextFieldM3(
               controller: usernameController,
-              decoration: InputDecoration(
-                hintText: 'Name',
-                suffixIcon: canNagivateToLobby
-                    ? IconButton(
-                        icon: const Icon(Icons.navigate_next_rounded),
-                        onPressed: navigateToLobby,
-                      )
-                    : null,
-              ),
+              hintText: 'Name',
+              suffixIcon: canNagivateToLobby
+                  ? IconButton(
+                      icon: const Icon(Icons.navigate_next_rounded),
+                      color: Theme.of(context).colorScheme.onSurface,
+                      onPressed: navigateToLobby,
+                    )
+                  : null,
             ),
           ]),
         )
