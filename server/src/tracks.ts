@@ -1,11 +1,6 @@
 import fs from 'fs';
 
-export interface Track {
-    id: string;
-    preview_url: string | null;
-    title: string;
-    artists: Array<string>;
-}
+
 
 var tracks: Track[] = [];
 

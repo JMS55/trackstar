@@ -4,7 +4,7 @@ import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
 
-const logger = winston.createLogger({
+export const logger = winston.createLogger({
     transports: [new winston.transports.Console()],
     format: format.combine(
         format.colorize(),
@@ -106,6 +106,7 @@ const ClientWSMessage = Union(WSStartGame, WSStartRound, WSMakeGuess);
 interface Player {
     client: WebSocket;
     name: string;
+    room: string;
 }
 
 class Room {
@@ -125,20 +126,7 @@ class Room {
 
     /** Send a message to all players */
     sendAll(message: ServerWSMessage) {
-        this.players.forEach((player) => this.sendOne(player, message));
-    }
-
-    /** Send a message to a single player */
-    sendOne(player: Player, message: ServerWSMessage) {
-        const message_json: string = JSON.stringify(message, (_key, value) =>
-            value instanceof Map ? Object.fromEntries(value) : value
-        );
-        logger.debug(
-            `Message sent to player ${player.name} in room ${
-                this.id
-            }...\n${prettyJson(message_json)}`
-        );
-        player.client.send(message_json);
+        this.players.forEach((player) => sendMessage(player, message));
     }
 
     notifyPlayersChanged() {
@@ -153,7 +141,7 @@ class Room {
         this.notifyPlayersChanged();
         this.game.addPlayer(player.name);
         if (this.game.state != State.LOBBY) {
-            this.sendOne(player, {
+            sendMessage(player, {
                 topic: Topic.GAME_CONFIG,
                 time_between_tracks: this.game.secs_between_tracks!,
                 tracks_per_round: this.game.tracks_per_round!,
@@ -280,7 +268,7 @@ class Room {
             guess,
             guess_epoch_millis
         );
-        this.sendOne(player, {
+        sendMessage(player, {
             topic: Topic.GUESS_RESULT,
             result: result,
         });
@@ -296,6 +284,19 @@ class Room {
             leaderboard: this.game.leaderboard,
         });
     }
+}
+
+/** Send a message to a single player */
+function sendMessage(player: Player, message: ServerWSMessage) {
+    const message_json: string = JSON.stringify(message, (_key, value) =>
+        value instanceof Map ? Object.fromEntries(value) : value
+    );
+    logger.debug(
+        `Message sent to player ${player.name} in room ${
+            player.room
+        }...\n${prettyJson(message_json)}`
+    );
+    player.client.send(message_json);
 }
 
 /** When client connects: create player, add player to room (create room first if it does not exist) */
@@ -382,12 +383,17 @@ function prettyJson(input: string) {
     return JSON.stringify(JSON.parse(input), null, 2);
 }
 
-//Start server
-const rooms = new Map();
-const wss = new Server({ port: 8080 });
-wss.on('connection', (ws, request) => {
-    const [room, player] = handleNewConnection(ws, request.url!);
-    ws.on('close', () => handleClosedConnection(room, player));
-    ws.on('message', (data) => handleMessage(room, player, data.toString()));
-});
-logger.info('TrackStar server started!');
+
+async function main() {
+    //Start server
+    const rooms = new Map();
+    const wss = new Server({ port: 8080 });
+    wss.on('connection', (ws, request) => {
+        const [room, player] = handleNewConnection(ws, request.url!);
+        ws.on('close', () => handleClosedConnection(room, player));
+        ws.on('message', (data) => handleMessage(room, player, data.toString()));
+    });
+    logger.info('TrackStar server started!');
+}
+
+void main();
