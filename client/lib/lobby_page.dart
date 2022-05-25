@@ -51,7 +51,7 @@ class _LobbyPageState extends State<LobbyPage> {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: ListView.separated(
+                child: ListView.builder(
                   itemCount: trackStarService.leaderboard.length,
                   itemBuilder: (BuildContext context, int index) {
                     String username =
@@ -67,8 +67,6 @@ class _LobbyPageState extends State<LobbyPage> {
                       ),
                     );
                   },
-                  separatorBuilder: (BuildContext context, int index) =>
-                      const Divider(),
                   shrinkWrap: true,
                 ),
               ),

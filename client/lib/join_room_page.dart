@@ -27,15 +27,15 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
           padding: const EdgeInsets.symmetric(horizontal: 48),
           child: Column(children: [
             TextFieldM3(
+              controller: usernameController,
+              hintText: 'Name',
+            ),
+            const SizedBox(height: 12),
+            TextFieldM3(
               controller: roomIdController,
               hintText: 'Room Code',
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            TextFieldM3(
-              controller: usernameController,
-              hintText: 'Name',
               suffixIcon: canNagivateToLobby
                   ? IconButton(
                       icon: const Icon(Icons.navigate_next_rounded),
