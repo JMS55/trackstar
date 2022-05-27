@@ -1,5 +1,4 @@
 import winston, { format } from 'winston';
-import { inspect } from 'util';
 import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
@@ -20,7 +19,6 @@ const TRACK_PLAY_LENGTH_SECS = 30;
 
 /** Topics for server/client messages */
 const enum Topic {
-    PLAYERS_CHANGED = 'players_changed',
     GAME_CONFIG = 'game_config',
     TRACK_INFO = 'track_info',
     GUESS_RESULT = 'guess_result',
@@ -33,13 +31,7 @@ const enum Topic {
 /////////////////////////////////////////////
 
 /** All Server -> Client messages */
-type ServerWSMessage = WSPlayersChanged | WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
-
-/** A player has entered or left the room */
-interface WSPlayersChanged {
-    topic: Topic.PLAYERS_CHANGED,
-    players: string[]
-}
+type ServerWSMessage = WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
 
 /** Configuration of the room's game */
 interface WSGameConfig {
@@ -128,17 +120,10 @@ class Room {
         player.client.send(message_json);
     }
 
-    notifyPlayersChanged() {
-        this.sendAll({
-            topic: Topic.PLAYERS_CHANGED,
-            players: this.players.map(player => player.name)
-        });
-    }
-
     addPlayer(player: Player) {
         this.players.push(player);
-        this.notifyPlayersChanged();
         this.game.addPlayer(player.name);
+        this.sendLeaderboard();
         if (this.game.state != State.LOBBY) {
             this.sendOne(player, {
                 topic: Topic.GAME_CONFIG,
@@ -150,8 +135,8 @@ class Room {
 
     deletePlayer(player: Player) {
         this.players = this.players.filter(p => p != player);
-        this.notifyPlayersChanged();
         this.game.deletePlayer(player.name);
+        this.sendLeaderboard();
     }
 
     setGameConfig(tracks_per_round: number, time_between_tracks: number) {
