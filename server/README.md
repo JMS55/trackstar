@@ -1,8 +1,12 @@
 Before doing anything, run:
+
     npm install
+
+---
 
 The file "tracks.json" must be present the top level of the server directory for
 the server to run. If it is not, or to update it, run:
+
     npm run update_tracks <playlist_id> <access_token>
 
 To get an access token:
@@ -15,5 +19,8 @@ To get an access token:
 7. Scroll down after it redirects
 8. Copy the text in the "OAuth Token" box
 
+---
+
 To start the server, run:
+
     npm start
