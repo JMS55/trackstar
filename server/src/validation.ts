@@ -2,7 +2,9 @@ import { Track } from './tracks';
 
 /** Return whether guess is close to the title */
 export function isCorrectTitle(track: Track, guess: string) {
-    return closeEnough(simplifyString(simplifyTitle(track.title)), simplifyString(guess));
+    const guessSimple = simplifyString(guess);
+    const titleStripped = stripTitle(track.title);
+    return closeEnough(simplifyString(titleStripped), guessSimple) || closeEnough(simplifyString(titleStripped, true), guessSimple);
 }
 
 
@@ -18,13 +20,21 @@ export function isCorrectArtist(track: Track, guess: string) {
     return false;
 }
 
-/** Remove accents and non-alphanumeric characters */
-function simplifyString(str: string) {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+/**
+ * Remove capitalization, accents, and non-alphanumeric characters
+ * @param spell_amp Replace '&' with 'and' instead of removing it
+ */
+function simplifyString(str: string, spell_amp: boolean = false) {
+    return str
+        .normalize('NFD')                      // Separate letters from their accents
+        .replace(/[\u0300-\u036f]/g, '')       // Remove the accent characters
+        .toLowerCase()                         // Lowercase
+        .replace('&', spell_amp ? 'and' : '')  // Either remove & or replace with 'and'
+        .replace(/[^a-z0-9]/g, '');            // Remove all non-alphanumerics
 }
 
 /** Remove things like "(feat. Rihanna)" and "- Radio Edit" from title */
-function simplifyTitle(title: string) {
+function stripTitle(title: string) {
     [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/].forEach(regex => {
         const found = title.match(regex);
         if (found) {
