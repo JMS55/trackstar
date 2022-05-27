@@ -1,5 +1,9 @@
+import 'dart:collection';
+import 'dart:math';
+import 'package:flutter_countdown_timer/current_remaining_time.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
 import 'package:flutter/material.dart';
+import 'widgets.dart';
 import 'trackstar_service.dart';
 
 class GamePage extends StatefulWidget {
@@ -12,177 +16,270 @@ class GamePage extends StatefulWidget {
 }
 
 class _GamePageState extends State<GamePage> {
-  final textController = TextEditingController();
-
-  @override
-  void initState() {
-    widget.trackStarService.changeSignal = setState;
-
-    super.initState();
-  }
+  final guessController = TextEditingController();
+  bool canGuess = false;
 
   @override
   Widget build(BuildContext context) {
-    Widget dynamicWidget;
+    Widget page;
     switch (widget.trackStarService.gameState) {
       case GameState.initial:
-        dynamicWidget = const Text('Wait for the first track to play');
+        page = Container(
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.pause_circle_outline_rounded,
+                  color: Theme.of(context).textTheme.headlineSmall!.color,
+                  size: 36,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Waiting for the first track…',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ],
+            ));
         break;
       case GameState.guessing:
-        dynamicWidget = Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Text(
-                'Guess (Track Title or Artist)',
-                style: TextStyle(
-                  color: Color.fromARGB(255, 5, 6, 92),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
+        SplayTreeMap<String, Standing> leaderboard = SplayTreeMap.from(
+          widget.trackStarService.leaderboard,
+          (key1, key2) => widget.trackStarService.leaderboard[key1]!
+              .compareTo(widget.trackStarService.leaderboard[key2]!),
+        );
+
+        page = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: ListView.separated(
+                      itemCount: leaderboard.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        String username = leaderboard.keys.elementAt(index);
+                        Standing standing = leaderboard.values.elementAt(index);
+                        Color avatarBorder;
+                        switch (standing.place) {
+                          case Place.first:
+                            avatarBorder = Colors.amber.shade400;
+                            break;
+                          case Place.second:
+                            avatarBorder = Colors.grey.shade400;
+                            break;
+                          case Place.third:
+                            avatarBorder = Colors.brown.shade400;
+                            break;
+                          case Place.none:
+                            avatarBorder = Colors.transparent;
+                            break;
+                        }
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: avatarBorder,
+                            child: AvatarCircle(username: username),
+                          ),
+                          title: Text(username),
+                          subtitle: Text('Score: ${standing.score}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.music_note_rounded,
+                                color: standing.progress ==
+                                            Progress.correctTitle ||
+                                        standing.progress ==
+                                            Progress.bothCorrect
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.brush_rounded,
+                                color: standing.progress ==
+                                            Progress.correctArtist ||
+                                        standing.progress ==
+                                            Progress.bothCorrect
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              )
+                            ],
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        );
+                      },
+                      separatorBuilder: (BuildContext context, int index) =>
+                          const Divider(),
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            // Neumorphic(
-            //   child: Padding(
-            //     padding: const EdgeInsets.all(18),
-            //     child: TextField(
-            //       cursorColor: const Color.fromARGB(255, 5, 6, 92),
-            //       style: const TextStyle(
-            //         color: Color.fromARGB(255, 5, 6, 92),
-            //         fontSize: 22,
-            //       ),
-            //       decoration: const InputDecoration.collapsed(hintText: ""),
-            //       controller: textController,
-            //     ),
-            //   ),
-            // ),
-          ],
+              const SizedBox(height: 32),
+              Column(children: [
+                TextFieldM3(
+                  hintText: 'Guess',
+                  controller: guessController,
+                ),
+                const SizedBox(height: 16),
+                // TODO: Cleanup this
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(children: [
+                      widget.trackStarService.guessedTitle
+                          ? Icon(
+                              Icons.check_circle_outline_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                          : Transform.rotate(
+                              angle: 45 * pi / 180,
+                              child: Icon(
+                                Icons.add_circle_outline_rounded,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                      const SizedBox(width: 2),
+                      Text(
+                        'Title',
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                              color: widget.trackStarService.guessedTitle
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.error,
+                            ),
+                      )
+                    ]),
+                    const SizedBox(width: 16),
+                    Row(children: [
+                      widget.trackStarService.guessedArtist
+                          ? Icon(
+                              Icons.check_circle_outline_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                          : Transform.rotate(
+                              angle: 45 * pi / 180,
+                              child: Icon(
+                                Icons.add_circle_outline_rounded,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                      const SizedBox(width: 2),
+                      Text(
+                        'Artist',
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                              color: widget.trackStarService.guessedArtist
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.error,
+                            ),
+                      )
+                    ]),
+                  ],
+                ),
+              ]),
+              const SizedBox(height: 64),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Column(children: [
+                  CountdownTimer(
+                    endTime: widget.trackStarService.trackStartTime + 1000 * 30,
+                    widgetBuilder:
+                        (BuildContext context, CurrentRemainingTime? time) =>
+                            // TODO: Flash/scale briefly when 5s reached
+                            Text(
+                      time == null ? 'Track Over' : '${time.sec}s left',
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                          color: (time == null
+                              ? null
+                              : (time.sec! <= 5
+                                  ? Theme.of(context).colorScheme.error
+                                  : null))),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Track ${widget.trackStarService.trackNumber}/${widget.trackStarService.tracksPerRound}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium!
+                        .copyWith(fontWeight: FontWeight.normal),
+                  ),
+                ]),
+              ),
+            ],
+          ),
         );
         break;
       case GameState.betweenTracks:
-        dynamicWidget = Text(
-            'That track was ${widget.trackStarService.trackTitle} by ${widget.trackStarService.trackArtists.join(', ')}!');
+        canGuess = false;
+
+        guessController.clear();
+
+        page = Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text('That track was:'),
+            Text(widget.trackStarService.trackTitle)
+          ],
+        );
+        // page = Text(
+        //     'That track was ${widget.trackStarService.trackTitle} by ${widget.trackStarService.trackArtists.join(', ')}!');
         break;
     }
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Room Code: ${widget.trackStarService.roomId}'),
+        actions: [
+          Row(children: [
+            // TODO: M3 switch (put mute/unmute icon within)
+            const Icon(Icons.volume_mute_rounded),
+            Switch(
+              value: true,
+              onChanged: (_) {}, // TODO: Toggle play/don't tracks
+            )
+          ])
+        ],
       ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [],
-        ),
-      ),
+      body: SafeArea(child: page),
+      floatingActionButton: canGuess
+          ? FloatingActionButton.extended(
+              onPressed: () =>
+                  widget.trackStarService.makeGuess(guessController.text),
+              icon: const Icon(Icons.send_outlined),
+              label: const Text('Make Guess'),
+            )
+          : null,
     );
+  }
 
-    // return PageCard(
-    //   floatingActionButton: NeumorphicFloatingActionButton(
-    //     style: NeumorphicTheme.currentTheme(context)
-    //         .appBarTheme
-    //         .buttonStyle
-    //         .copyWith(color: const Color.fromARGB(255, 49, 69, 106)),
-    //     child: const Icon(Icons.send_rounded,
-    //         color: Color.fromARGB(255, 222, 228, 238)),
-    //     onPressed: () => widget.trackStarService.makeGuess(textController.text),
-    //   ),
-    //   child: Column(mainAxisSize: MainAxisSize.min, children: [
-    //     FittedBox(
-    //       fit: BoxFit.contain,
-    //       child: RichText(
-    //         text: TextSpan(
-    //           text: 'Room Code ',
-    //           style: const TextStyle(
-    //             color: Color.fromARGB(255, 5, 6, 92),
-    //             fontSize: 72,
-    //             fontWeight: FontWeight.w500,
-    //           ),
-    //           children: [
-    //             TextSpan(
-    //               text: ' ${widget.trackStarService.roomId} ',
-    //               style: const TextStyle(
-    //                 color: Color.fromARGB(255, 222, 228, 238),
-    //                 backgroundColor: Color.fromARGB(255, 5, 6, 92),
-    //                 fontSize: 72,
-    //                 fontWeight: FontWeight.w900,
-    //               ),
-    //             )
-    //           ],
-    //         ),
-    //       ),
-    //     ),
-    //     const SizedBox(height: 12),
-    //     Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-    //       Text(
-    //         'Track ${widget.trackStarService.trackNumber}/${widget.trackStarService.tracksPerRound}',
-    //         style: const TextStyle(
-    //           color: Color.fromARGB(255, 5, 6, 92),
-    //           fontSize: 18,
-    //         ),
-    //       ),
-    //       CountdownTimer(
-    //         endTime: widget.trackStarService.trackStartTime + 1000 * 30,
-    //         endWidget: const Text('Track over',
-    //             style: TextStyle(
-    //                 color: Color.fromARGB(255, 5, 6, 92), fontSize: 18)),
-    //         textStyle: const TextStyle(
-    //             color: Color.fromARGB(255, 5, 6, 92), fontSize: 18),
-    //       ),
-    //     ]),
-    //     Padding(
-    //       padding: const EdgeInsets.all(16),
-    //       child: ListView.separated(
-    //         itemCount: widget.trackStarService.leaderboard.length,
-    //         itemBuilder: (BuildContext context, int index) {
-    //           MapEntry<String, Standing> player =
-    //               widget.trackStarService.leaderboard.entries.elementAt(index);
-    //           return Text(
-    //             '${player.key}: ${player.value.score}',
-    //             style: const TextStyle(
-    //               color: Color.fromARGB(255, 5, 6, 92),
-    //               fontSize: 18,
-    //             ),
-    //           );
-    //         },
-    //         separatorBuilder: (BuildContext context, int index) =>
-    //             const Divider(),
-    //         shrinkWrap: true,
-    //       ),
-    //     ),
-    //     const SizedBox(height: 36),
-    //     dynamicWidget,
-    //     const SizedBox(height: 24),
-    //     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-    //       Text(
-    //         'Title',
-    //         style: TextStyle(
-    //           color: widget.trackStarService.guessedTitle
-    //               ? const Color.fromARGB(255, 20, 148, 24)
-    //               : const Color.fromARGB(255, 5, 6, 92),
-    //           fontSize: 18,
-    //         ),
-    //       ),
-    //       const SizedBox(width: 24),
-    //       Text(
-    //         'Artist',
-    //         style: TextStyle(
-    //           color: widget.trackStarService.guessedArtist
-    //               ? const Color.fromARGB(255, 20, 148, 24)
-    //               : const Color.fromARGB(255, 5, 6, 92),
-    //           fontSize: 18,
-    //         ),
-    //       )
-    //     ])
-    //   ]),
-    // );
+  @override
+  void initState() {
+    widget.trackStarService.changeSignal = setState;
+
+    guessController.addListener(() {
+      setState(() => canGuess = guessController.text.isNotEmpty);
+    });
+
+    super.initState();
   }
 
   @override
   void dispose() {
+    guessController.dispose();
+
     widget.trackStarService.disconnect();
 
     super.dispose();

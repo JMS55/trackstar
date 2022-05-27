@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'widgets.dart';
 import 'trackstar_service.dart';
 import 'game_page.dart';
 
@@ -32,7 +33,7 @@ class _LobbyPageState extends State<LobbyPage> {
       appBar: AppBar(title: const Text('Lobby')),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -46,28 +47,47 @@ class _LobbyPageState extends State<LobbyPage> {
                         .copyWith(fontWeight: FontWeight.w500),
                   ),
                   subtitle: const Text('Room Code'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.people_alt_rounded),
+                      const SizedBox(width: 4),
+                      Text(
+                        trackStarService.leaderboard.length.toString(),
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: ListView.builder(
-                  itemCount: trackStarService.leaderboard.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    String username =
-                        trackStarService.leaderboard.keys.elementAt(index);
-                    return Card(
-                      elevation: 0,
-                      color: Theme.of(context).colorScheme.surfaceVariant,
-                      child: ListTile(
-                        title: Text(username),
-                        subtitle: username == trackStarService.userName
-                            ? const Text('You')
-                            : null,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Card(
+                    elevation: 0,
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: ListView.separated(
+                        itemCount: trackStarService.leaderboard.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          String username = trackStarService.leaderboard.keys
+                              .elementAt(index);
+                          return ListTile(
+                            leading: AvatarCircle(username: username),
+                            title: Text(username),
+                            subtitle: username == trackStarService.userName
+                                ? const Text('You')
+                                : null,
+                            visualDensity: VisualDensity.compact,
+                          );
+                        },
+                        separatorBuilder: (BuildContext context, int index) =>
+                            const Divider(),
                       ),
-                    );
-                  },
-                  shrinkWrap: true,
+                    ),
+                  ),
                 ),
               ),
             ],

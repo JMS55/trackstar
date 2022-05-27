@@ -17,7 +17,7 @@ class TrackStarService {
   String userName;
 
   GameState gameState = GameState.initial;
-  int trackNumber = 0;
+  int trackNumber = -1;
   int tracksPerRound = -1;
   int trackStartTime = -1;
   int timeBetweenTracks = -1;
@@ -56,9 +56,6 @@ class TrackStarService {
 
     stream = ws.stream.map((msg) => jsonDecode(msg)).listen((msg) {
       String topic = msg['topic'];
-      if (topic == PlayersChangedMessage.topic) {
-        handlePlayersChanged(PlayersChangedMessage.fromJson(msg));
-      }
       if (topic == GameConfigMessage.topic) {
         handleGameConfig(GameConfigMessage.fromJson(msg));
       }
@@ -85,19 +82,6 @@ class TrackStarService {
 
   void makeGuess(String guess) {
     ws.sink.add(jsonEncode(MakeGuessCommand(guess).toJson()));
-  }
-
-  void handlePlayersChanged(PlayersChangedMessage msg) {
-    leaderboard.removeWhere((player, _) => !msg.players.contains(player));
-
-    for (String player in msg.players) {
-      leaderboard.putIfAbsent(
-        player,
-        () => Standing(0, 0, Progress.noneCorrect, Place.none),
-      );
-    }
-
-    signalChange();
   }
 
   void handleGameConfig(GameConfigMessage msg) {
@@ -197,17 +181,6 @@ class MakeGuessCommand {
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class PlayersChangedMessage {
-  static const String topic = 'players_changed';
-  final List<String> players;
-
-  PlayersChangedMessage(this.players);
-  factory PlayersChangedMessage.fromJson(Map<String, dynamic> json) =>
-      _$PlayersChangedMessageFromJson(json);
-  Map<String, dynamic> toJson() => _$PlayersChangedMessageToJson(this);
-}
-
-@JsonSerializable(fieldRename: FieldRename.snake)
 class GameConfigMessage {
   static const String topic = 'game_config';
   final int timeBetweenTracks;
@@ -258,7 +231,7 @@ class LeaderBoardMessage {
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class Standing {
+class Standing implements Comparable<Standing> {
   final int score;
   final int pointsFromCurrentTrack;
   final Progress progress;
@@ -268,13 +241,24 @@ class Standing {
   factory Standing.fromJson(Map<String, dynamic> json) =>
       _$StandingFromJson(json);
   Map<String, dynamic> toJson() => _$StandingToJson(this);
+
+  @override
+  int compareTo(Standing other) {
+    if (place != other.place) {
+      return Enum.compareByIndex(place, other.place);
+    } else if (progress != other.progress) {
+      return Enum.compareByIndex(place, other.progress);
+    } else {
+      return score - other.score;
+    }
+  }
 }
 
 @JsonEnum(fieldRename: FieldRename.snake)
 enum GuessResult { correctTitle, correctArtist, incorrect }
 
 @JsonEnum(fieldRename: FieldRename.snake)
-enum Progress { correctTitle, correctArtist, bothCorrect, noneCorrect }
+enum Progress { bothCorrect, correctTitle, correctArtist, noneCorrect }
 
 @JsonEnum(fieldRename: FieldRename.snake)
 enum Place { first, second, third, none }

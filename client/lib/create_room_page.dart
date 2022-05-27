@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'lobby_page.dart';
-import 'logo_widget.dart';
-import 'text_field_m3_widget.dart';
+import 'widgets.dart';
 
 class CreateRoomPage extends StatefulWidget {
   const CreateRoomPage({Key? key}) : super(key: key);
@@ -26,7 +25,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
           child: TextFieldM3(
             hintText: 'Name',
             controller: usernameController,
-            suffixIcon: usernameController.text.isNotEmpty
+            suffixIcon: canNagivateToLobby
                 ? IconButton(
                     icon: const Icon(Icons.navigate_next_rounded),
                     color: Theme.of(context).colorScheme.onSurface,

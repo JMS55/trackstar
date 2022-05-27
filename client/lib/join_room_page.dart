@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'lobby_page.dart';
-import 'logo_widget.dart';
-import 'text_field_m3_widget.dart';
+import 'widgets.dart';
 
 class JoinRoomPage extends StatefulWidget {
   const JoinRoomPage({Key? key}) : super(key: key);

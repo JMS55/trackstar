@@ -1,5 +1,41 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+class LogoWidget extends StatelessWidget {
+  const LogoWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      const Text(
+        'TrackStar',
+        style: TextStyle(fontSize: 64, fontFamily: 'Lobster'),
+      ),
+      const SizedBox(height: 12),
+      Image.asset(
+        'assets/icon.png',
+        width: 132,
+      ),
+    ]);
+  }
+}
+
+class AvatarCircle extends StatelessWidget {
+  const AvatarCircle({Key? key, required this.username}) : super(key: key);
+
+  final String username;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      backgroundColor:
+          Color((Random(username.hashCode).nextDouble() * 0xFFFFFF).toInt())
+              .withOpacity(1.0),
+      child: Text(username.characters.first),
+    );
+  }
+}
 
 class TextFieldM3 extends StatelessWidget {
   const TextFieldM3({
