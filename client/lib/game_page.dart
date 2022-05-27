@@ -18,227 +18,10 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   final guessController = TextEditingController();
   bool canGuess = false;
+  SplayTreeMap<String, Standing> sortedLeaderboard = SplayTreeMap();
 
   @override
   Widget build(BuildContext context) {
-    Widget page;
-    switch (widget.trackStarService.gameState) {
-      case GameState.initial:
-        page = Container(
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.pause_circle_outline_rounded,
-                  color: Theme.of(context).textTheme.headlineSmall!.color,
-                  size: 36,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Waiting for the first track…',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ],
-            ));
-        break;
-      case GameState.guessing:
-        SplayTreeMap<String, Standing> leaderboard = SplayTreeMap.from(
-          widget.trackStarService.leaderboard,
-          (key1, key2) => widget.trackStarService.leaderboard[key1]!
-              .compareTo(widget.trackStarService.leaderboard[key2]!),
-        );
-
-        page = Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    borderRadius: const BorderRadius.all(Radius.circular(12)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: ListView.separated(
-                      itemCount: leaderboard.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        String username = leaderboard.keys.elementAt(index);
-                        Standing standing = leaderboard.values.elementAt(index);
-                        Color avatarBorder;
-                        switch (standing.place) {
-                          case Place.first:
-                            avatarBorder = Colors.amber.shade400;
-                            break;
-                          case Place.second:
-                            avatarBorder = Colors.grey.shade400;
-                            break;
-                          case Place.third:
-                            avatarBorder = Colors.brown.shade400;
-                            break;
-                          case Place.none:
-                            avatarBorder = Colors.transparent;
-                            break;
-                        }
-
-                        return ListTile(
-                          leading: CircleAvatar(
-                            radius: 24,
-                            backgroundColor: avatarBorder,
-                            child: AvatarCircle(username: username),
-                          ),
-                          title: Text(username),
-                          subtitle: Text('Score: ${standing.score}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.music_note_rounded,
-                                color: standing.progress ==
-                                            Progress.correctTitle ||
-                                        standing.progress ==
-                                            Progress.bothCorrect
-                                    ? Theme.of(context).colorScheme.primary
-                                    : null,
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                Icons.brush_rounded,
-                                color: standing.progress ==
-                                            Progress.correctArtist ||
-                                        standing.progress ==
-                                            Progress.bothCorrect
-                                    ? Theme.of(context).colorScheme.primary
-                                    : null,
-                              )
-                            ],
-                          ),
-                          visualDensity: VisualDensity.compact,
-                        );
-                      },
-                      separatorBuilder: (BuildContext context, int index) =>
-                          const Divider(),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              Column(children: [
-                TextFieldM3(
-                  hintText: 'Guess',
-                  controller: guessController,
-                ),
-                const SizedBox(height: 16),
-                // TODO: Cleanup this
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(children: [
-                      widget.trackStarService.guessedTitle
-                          ? Icon(
-                              Icons.check_circle_outline_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                            )
-                          : Transform.rotate(
-                              angle: 45 * pi / 180,
-                              child: Icon(
-                                Icons.add_circle_outline_rounded,
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                      const SizedBox(width: 2),
-                      Text(
-                        'Title',
-                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                              color: widget.trackStarService.guessedTitle
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.error,
-                            ),
-                      )
-                    ]),
-                    const SizedBox(width: 16),
-                    Row(children: [
-                      widget.trackStarService.guessedArtist
-                          ? Icon(
-                              Icons.check_circle_outline_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                            )
-                          : Transform.rotate(
-                              angle: 45 * pi / 180,
-                              child: Icon(
-                                Icons.add_circle_outline_rounded,
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                      const SizedBox(width: 2),
-                      Text(
-                        'Artist',
-                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                              color: widget.trackStarService.guessedArtist
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.error,
-                            ),
-                      )
-                    ]),
-                  ],
-                ),
-              ]),
-              const SizedBox(height: 64),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Column(children: [
-                  CountdownTimer(
-                    endTime: widget.trackStarService.trackStartTime + 1000 * 30,
-                    widgetBuilder:
-                        (BuildContext context, CurrentRemainingTime? time) =>
-                            // TODO: Flash/scale briefly when 5s reached
-                            Text(
-                      time == null ? 'Track Over' : '${time.sec}s left',
-                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                          color: (time == null
-                              ? null
-                              : (time.sec! <= 5
-                                  ? Theme.of(context).colorScheme.error
-                                  : null))),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Track ${widget.trackStarService.trackNumber}/${widget.trackStarService.tracksPerRound}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium!
-                        .copyWith(fontWeight: FontWeight.normal),
-                  ),
-                ]),
-              ),
-            ],
-          ),
-        );
-        break;
-      case GameState.betweenTracks:
-        canGuess = false;
-
-        guessController.clear();
-
-        page = Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text('That track was:'),
-            Text(widget.trackStarService.trackTitle)
-          ],
-        );
-        // page = Text(
-        //     'That track was ${widget.trackStarService.trackTitle} by ${widget.trackStarService.trackArtists.join(', ')}!');
-        break;
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Room Code: ${widget.trackStarService.roomId}'),
@@ -253,7 +36,7 @@ class _GamePageState extends State<GamePage> {
           ])
         ],
       ),
-      body: SafeArea(child: page),
+      body: SafeArea(child: buildPage(context)),
       floatingActionButton: canGuess
           ? FloatingActionButton.extended(
               onPressed: () =>
@@ -265,13 +48,271 @@ class _GamePageState extends State<GamePage> {
     );
   }
 
+  Widget buildPage(BuildContext context) {
+    switch (widget.trackStarService.gameState) {
+      case GameState.initial:
+        return buildInitialPage(context);
+      case GameState.guessing:
+        return buildGuessingPage(context);
+      case GameState.betweenTracks:
+        return buildBetweenTracksPage(context);
+    }
+  }
+
+  Widget buildInitialPage(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.pause_circle_outline_rounded,
+            color: Theme.of(context).textTheme.headlineSmall!.color,
+            size: 36,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Waiting for the first track…',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildGuessingPage(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(child: buildLeaderboard(context)),
+          const SizedBox(height: 32),
+          buildGuessingArea(context),
+          const SizedBox(height: 64),
+          buildTrackInfoArea(context),
+        ],
+      ),
+    );
+  }
+
+  Widget buildBetweenTracksPage(BuildContext context) {
+    // TODO
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text('That track was:'),
+        Text(widget.trackStarService.trackTitle)
+      ],
+    );
+    // Text('That track was ${widget.trackStarService.trackTitle} by ${widget.trackStarService.trackArtists.join(', ')}!');
+  }
+
+  Widget buildLeaderboard(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outline,
+        ),
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: ListView.separated(
+          itemCount: sortedLeaderboard.length,
+          itemBuilder: (BuildContext context, int index) {
+            String username = sortedLeaderboard.keys.elementAt(index);
+            Standing standing = sortedLeaderboard.values.elementAt(index);
+            Color avatarBorder;
+            switch (standing.place) {
+              case Place.first:
+                avatarBorder = Colors.amber.shade300;
+                break;
+              case Place.second:
+                avatarBorder = Colors.grey.shade300;
+                break;
+              case Place.third:
+                avatarBorder = Colors.brown.shade300;
+                break;
+              case Place.none:
+                avatarBorder = Colors.transparent;
+                break;
+            }
+
+            return ListTile(
+              leading: CircleAvatar(
+                radius: 24,
+                backgroundColor: avatarBorder,
+                child: AvatarCircle(username: username),
+              ),
+              title: Text(username),
+              subtitle: Text('Score: ${standing.score}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  standing.progress == Progress.correctTitle ||
+                          standing.progress == Progress.bothCorrect
+                      ? Icon(
+                          Icons.music_note,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : const Icon(Icons.music_note_outlined),
+                  const SizedBox(width: 8),
+                  standing.progress == Progress.correctArtist ||
+                          standing.progress == Progress.bothCorrect
+                      ? Icon(
+                          Icons.brush,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : const Icon(Icons.brush_outlined),
+                ],
+              ),
+              visualDensity: VisualDensity.compact,
+            );
+          },
+          separatorBuilder: (BuildContext context, int index) =>
+              const Divider(),
+          shrinkWrap: true,
+        ),
+      ),
+    );
+  }
+
+  Widget buildGuessingArea(BuildContext context) {
+    // TODO: Clean this up
+    Row guessStatusWidget = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(children: [
+          widget.trackStarService.guessedTitle
+              ? Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                )
+              : Transform.rotate(
+                  angle: 45 * pi / 180,
+                  child: Icon(
+                    Icons.add_circle_outline_rounded,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+          const SizedBox(width: 2),
+          Text(
+            'Title',
+            style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                  color: widget.trackStarService.guessedTitle
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
+                ),
+          )
+        ]),
+        const SizedBox(width: 16),
+        Row(children: [
+          widget.trackStarService.guessedArtist
+              ? Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                )
+              : Transform.rotate(
+                  angle: 45 * pi / 180,
+                  child: Icon(
+                    Icons.add_circle_outline_rounded,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+          const SizedBox(width: 2),
+          Text(
+            'Artist',
+            style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                  color: widget.trackStarService.guessedArtist
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
+                ),
+          )
+        ]),
+      ],
+    );
+
+    if (widget.trackStarService.guessedTitle &&
+        widget.trackStarService.guessedArtist) {
+      return guessStatusWidget;
+    } else {
+      return Column(children: [
+        TextFieldM3(
+          hintText: 'Guess',
+          controller: guessController,
+        ),
+        const SizedBox(height: 16),
+        guessStatusWidget,
+      ]);
+    }
+  }
+
+  Widget buildTrackInfoArea(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(children: [
+        CountdownTimer(
+          endTime: widget.trackStarService.trackStartTime + 1000 * 30,
+          widgetBuilder: (BuildContext context, CurrentRemainingTime? time) =>
+              // TODO: Flash/scale briefly when 5s reached
+              Text(
+            time == null ? 'Track Over' : '${time.sec}s left',
+            style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                color: (time == null
+                    ? null
+                    : (time.sec! <= 5
+                        ? Theme.of(context).colorScheme.error
+                        : null))),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Track ${widget.trackStarService.trackNumber}/${widget.trackStarService.tracksPerRound}',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium!
+              .copyWith(fontWeight: FontWeight.normal),
+        ),
+      ]),
+    );
+  }
+
   @override
   void initState() {
-    widget.trackStarService.changeSignal = setState;
+    sortedLeaderboard = SplayTreeMap.from(widget.trackStarService.leaderboard);
 
     guessController.addListener(() {
       setState(() => canGuess = guessController.text.isNotEmpty);
     });
+
+    widget.trackStarService.changeSignal = (_) => setState(() {
+          if (widget.trackStarService.gameState == GameState.guessing) {
+            sortedLeaderboard = SplayTreeMap.from(
+              widget.trackStarService.leaderboard,
+              (key1, key2) => widget.trackStarService.leaderboard[key1]!
+                  .compareTo(widget.trackStarService.leaderboard[key2]!),
+            );
+
+            if (widget.trackStarService.lastGuessCorrect == true) {
+              guessController.clear();
+            }
+            widget.trackStarService.lastGuessCorrect = null;
+          }
+
+          if (widget.trackStarService.gameState == GameState.betweenTracks) {
+            canGuess = false;
+            guessController.clear();
+
+            sortedLeaderboard = SplayTreeMap.from(
+              widget.trackStarService.leaderboard,
+              (key1, key2) => widget.trackStarService.leaderboard[key1]!.score
+                  .compareTo(widget.trackStarService.leaderboard[key2]!.score),
+            );
+          }
+        });
 
     super.initState();
   }

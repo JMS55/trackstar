@@ -61,7 +61,7 @@ class _LobbyPageState extends State<LobbyPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              Expanded(
+              Flexible(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Card(
@@ -85,6 +85,7 @@ class _LobbyPageState extends State<LobbyPage> {
                         },
                         separatorBuilder: (BuildContext context, int index) =>
                             const Divider(),
+                        shrinkWrap: true,
                       ),
                     ),
                   ),

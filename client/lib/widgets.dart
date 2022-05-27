@@ -30,13 +30,13 @@ class AvatarCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleAvatar(
       backgroundColor:
-          Color((Random(username.hashCode).nextDouble() * 0xFFFFFF).toInt())
-              .withOpacity(1.0),
+          Color((Random(username.hashCode).nextDouble() * 0xFFc8c8c8).toInt()),
       child: Text(username.characters.first),
     );
   }
 }
 
+// TODO: Placeholder until flutter updates TextField to material 3
 class TextFieldM3 extends StatelessWidget {
   const TextFieldM3({
     Key? key,

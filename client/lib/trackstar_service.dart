@@ -24,6 +24,7 @@ class TrackStarService {
 
   bool guessedTitle = false;
   bool guessedArtist = false;
+  bool? lastGuessCorrect;
   Map<String, Standing> leaderboard = {};
 
   String trackTitle = "";
@@ -114,10 +115,16 @@ class TrackStarService {
   void handleGuessResult(GuessResultMessage msg) {
     if (msg.result == GuessResult.correctTitle) {
       guessedTitle = true;
+      lastGuessCorrect = true;
     }
 
     if (msg.result == GuessResult.correctArtist) {
       guessedArtist = true;
+      lastGuessCorrect = true;
+    }
+
+    if (msg.result == GuessResult.incorrect) {
+      lastGuessCorrect = false;
     }
 
     signalChange();
@@ -249,7 +256,7 @@ class Standing implements Comparable<Standing> {
     } else if (progress != other.progress) {
       return Enum.compareByIndex(place, other.progress);
     } else {
-      return score - other.score;
+      return other.score - score;
     }
   }
 }
