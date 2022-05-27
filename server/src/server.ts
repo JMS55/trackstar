@@ -3,6 +3,8 @@ import { inspect } from 'util';
 import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
+import { TrackStore } from './data';
+import { fetchTracks } from './spotify';
 
 export const logger = winston.createLogger({
     transports: [new winston.transports.Console()],
@@ -301,6 +303,7 @@ function sendMessage(player: Player, message: ServerWSMessage) {
 
 /** When client connects: create player, add player to room (create room first if it does not exist) */
 function handleNewConnection(
+    rooms: Map<string, Room>,
     ws: WebSocket,
     request_url: string
 ): [Room, Player] {
@@ -309,10 +312,11 @@ function handleNewConnection(
     const new_player: Player = {
         client: ws,
         name: player_name,
+        room: room_id
     };
     let room: Room;
     if (rooms.has(room_id)) {
-        room = rooms.get(room_id);
+        room = rooms.get(room_id)!;
     } else {
         logger.debug(`Room ${room_id} has been created`);
         room = new Room(room_id, new_player);
@@ -323,7 +327,7 @@ function handleNewConnection(
 }
 
 /** When client disconnects: delete player, delete room if empty */
-function handleClosedConnection(room: Room, player: Player) {
+function handleClosedConnection(rooms: Map<string, Room>, room: Room, player: Player) {
     logger.debug(`Player ${player.name} has left room ${room.id}`);
     room.deletePlayer(player);
     if (room.players.length == 0) {
@@ -385,12 +389,23 @@ function prettyJson(input: string) {
 
 
 async function main() {
+    //Open database
+    const data = new TrackStore();
+
+    const args = process.argv.slice(2);
+    if (args.length == 2) {
+        const [playlist_id, access_token] = args;
+        const tracks = await fetchTracks(playlist_id!, access_token!);
+        data.loadSongs(playlist_id, tracks);
+    }
+    
+
     //Start server
     const rooms = new Map();
     const wss = new Server({ port: 8080 });
     wss.on('connection', (ws, request) => {
-        const [room, player] = handleNewConnection(ws, request.url!);
-        ws.on('close', () => handleClosedConnection(room, player));
+        const [room, player] = handleNewConnection(rooms, ws, request.url!);
+        ws.on('close', () => handleClosedConnection(rooms, room, player));
         ws.on('message', (data) => handleMessage(room, player, data.toString()));
     });
     logger.info('TrackStar server started!');

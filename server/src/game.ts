@@ -1,4 +1,4 @@
-import { getRandomUnplayedTrack, Track } from './tracks';
+import type { Track, TrackList } from './data';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 
 /** Game state */
@@ -51,6 +51,7 @@ export class Game {
     state: State;
     tracks_per_round: number | null;
     secs_between_tracks: number | null;
+    playlist: TrackList;
     current_track: Track | null;
     current_track_number: number;
     played_tracks: Set<Track>;
@@ -61,6 +62,7 @@ export class Game {
         this.state = State.LOBBY;
         this.tracks_per_round = null;
         this.secs_between_tracks = null;
+        this.playlist = [];
         this.current_track = null;
         this.current_track_number = 0;
         this.played_tracks = new Set();
@@ -102,7 +104,7 @@ export class Game {
 
     /** Switch to and return a new track (which has not already been played) */
     nextTrack(): Track {
-        const track = getRandomUnplayedTrack(this.played_tracks);
+        const track = this.getRandomUnplayedTrack();
         this.current_track = track;
         this.current_track_number++;
         this.played_tracks.add(track);
@@ -187,4 +189,13 @@ export class Game {
         });
         this.completions = [];
     }
+
+    getRandomUnplayedTrack() {
+        var track;
+        do {
+            track = this.playlist[Math.floor(Math.random() * this.playlist.length)];
+        } while (this.played_tracks.has(track));
+        return track;
+    }
+    
 }

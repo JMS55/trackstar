@@ -1,19 +1,36 @@
-import sqlite3, { Database } from 'sqlite3';
+import { Database } from 'sqlite3';
+import { logger } from './server';
 
-class DataStore {
-    private db: Database;
+export class TrackStore {
+    private readonly db: Database;
 
     constructor() {
         this.db = open_db();
     }
 
-    loadSongs(tracks: TrackList) {
+    loadSongs(playlist_id: string, tracks: TrackList) {
         const stmt = this.db.prepare("INSERT INTO songs VALUES (?)");
+
     }
-    
-    getSongs(playlist_id: string) {
-        const stmt = "SELECT * FROM Users \n"
-                    + "JOIN UserPermissions USING (UserLogin);"
+
+    getSongs(playlist_id: string): TrackList {
+        const stmt = this.db.prepare("SELECT s.* FROM contents cs \n"
+                    + "INNER JOIN songs s on s.song_id = cs.song_id \n" + 
+                    + "WHERE cs.playlist_id = ?;");
+        let songs: Track[] = [];
+        stmt.each((e, row) => {
+            if (e) {
+                logger.error(`Error while getting songs from playlist ${playlist_id}: ${e}`);
+            } else {
+                const artists = row.artists.split(',');
+                songs.push({
+                    id: row.song_id,
+                    title: row.title,
+                    artists: row.artists,
+                    preview_url: row.preview_url,
+                });
+            }});
+        return songs;
     }
 }
 
@@ -29,6 +46,7 @@ export type TrackList = readonly Track[];
 
 function open_db(): Database {
     const db = new Database("data.db");
+    db.run("PRAGMA foreign_keys = ON;");
 
     db.run("CREATE TABLE IF NOT EXISTS songs (\n"
     + "	song_id TEXT PRIMARY KEY,\n"
@@ -51,10 +69,7 @@ function open_db(): Database {
     + "    ON DELETE CASCADE ,\n"
     + " FOREIGN KEY (song_id) REFERENCES songs (song_id)"
     + "    ON UPDATE CASCADE \n"
-    + "    ON DELETE CASCADE ,\n"
-    
+    + "    ON DELETE CASCADE \n"
     + ");");
     return db;
 }
-
-open_db();

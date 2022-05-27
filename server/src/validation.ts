@@ -1,4 +1,4 @@
-import { Track } from './tracks';
+import { Track } from './data';
 
 /** Return whether guess is close to the title */
 export function isCorrectTitle(track: Track, guess: string) {

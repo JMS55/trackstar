@@ -1,7 +1,6 @@
 import fs from 'fs';
 import fetch from 'node-fetch';
 import Spotify from 'spotify-web-api-node';
-import { Track } from './tracks';
 import { logger } from './server';
 import { sys } from 'typescript';
 import { TrackList } from './data';
@@ -103,18 +102,10 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
 }
 
 /** Update tracks.json with the tracks from the given playlist */
-export async function fetchTracks(playlist_id: string, access_token: string) {
+export async function fetchTracks(playlist_id: string, access_token: string): Promise<TrackList> {
     API_INSTANCE.setAccessToken(access_token);
     let tracks = await pullTracks(playlist_id, access_token, 0);
     tracks = await fillMissingUrls(tracks);
     tracks = removeTracksWithNullURL(tracks);
-    fs.writeFileSync('tracks.json', JSON.stringify(tracks));
+    return tracks;
 }
-
-const args = process.argv.slice(2);
-if (args.length != 2) {
-    console.error('Usage: npm run update_tracks <playlist_id> <access_token>');
-    sys.exit(1);
-}
-const [playlist_id, access_token] = args;
-fetchTracks(playlist_id!, access_token!);
