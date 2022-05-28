@@ -11,16 +11,12 @@ export class TrackStore {
     /** Add songs to the database for a given playlist. Updates playlist table and junction table as well. */
     loadSongs(playlist_id: string, tracks: TrackList) {
         this.db
-            .prepare(
-                'INSERT OR REPLACE INTO playlists (playlist_id, last_updated) VALUES (?, ?);'
-            )
+            .prepare('INSERT OR REPLACE INTO playlists (playlist_id, last_updated) VALUES (?, ?);')
             .run(playlist_id, new Date().getTime());
         const songStmt = this.db.prepare(
             'INSERT OR REPLACE INTO songs (song_id, preview_url, img_url, title, artists, add_time) VALUES (?,?,?,?,?,?);'
         );
-        const contentStmt = this.db.prepare(
-            'INSERT OR IGNORE INTO contents (playlist_id, song_id) VALUES (?,?);'
-        ); //TODO: check removed
+        const contentStmt = this.db.prepare('INSERT OR IGNORE INTO contents (playlist_id, song_id) VALUES (?,?);'); //TODO: check removed
         const txn = this.db.transaction((tracks: TrackList) => {
             tracks.forEach((track) => {
                 try {
@@ -29,18 +25,12 @@ export class TrackStore {
                         track.preview_url,
                         null,
                         track.title,
-                        track.artists
-                            .map((artist) =>
-                                Buffer.from(artist).toString('base64')
-                            )
-                            .join(','),
+                        track.artists.map((artist) => Buffer.from(artist).toString('base64')).join(','),
                         new Date().getTime()
                     );
                     contentStmt.run(playlist_id, track.id);
                 } catch (e) {
-                    logger.warn(
-                        `Error adding track ${track.id} to database: ${e}`
-                    );
+                    logger.warn(`Error adding track ${track.id} to database: ${e}`);
                 }
             });
         });
@@ -59,11 +49,7 @@ export class TrackStore {
 
         try {
             for (var row of stmt.iterate(playlist_id)) {
-                const artists = row.artists
-                    .split(',')
-                    .map((s: string) =>
-                        Buffer.from(s, 'base64').toString('ascii')
-                    );
+                const artists = row.artists.split(',').map((s: string) => Buffer.from(s, 'base64').toString('ascii'));
                 songs.push({
                     id: row.song_id,
                     title: row.title,
@@ -72,13 +58,9 @@ export class TrackStore {
                 });
             }
         } catch (e) {
-            logger.error(
-                `Error while getting songs from playlist ${playlist_id}: ${e}`
-            );
+            logger.error(`Error while getting songs from playlist ${playlist_id}: ${e}`);
         }
-        logger.info(
-            `Loaded ${songs.length} songs from playlist ${playlist_id}`
-        );
+        logger.info(`Loaded ${songs.length} songs from playlist ${playlist_id}`);
         return songs;
     }
 }

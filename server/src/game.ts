@@ -120,15 +120,9 @@ export class Game {
         let result;
         if (progress == Progress.BOTH) {
             return GuessResult.INCORRECT;
-        } else if (
-            progress != Progress.TITLE &&
-            isCorrectTitle(this.current_track!, guess)
-        ) {
+        } else if (progress != Progress.TITLE && isCorrectTitle(this.current_track!, guess)) {
             result = GuessResult.TITLE;
-        } else if (
-            progress != Progress.ARTIST &&
-            isCorrectArtist(this.current_track!, guess)
-        ) {
+        } else if (progress != Progress.ARTIST && isCorrectArtist(this.current_track!, guess)) {
             result = GuessResult.ARTIST;
         } else {
             return GuessResult.INCORRECT;
@@ -138,8 +132,7 @@ export class Game {
         standing.points_from_current_track++;
         if (progress == Progress.NONE) {
             //Player has either title or artist correct now
-            standing.progress =
-                result == GuessResult.TITLE ? Progress.TITLE : Progress.ARTIST;
+            standing.progress = result == GuessResult.TITLE ? Progress.TITLE : Progress.ARTIST;
             standing.points_from_current_track = 1;
         } else {
             //Player has both title and artist correct now
@@ -194,8 +187,7 @@ export class Game {
     getRandomUnplayedTrack() {
         var track;
         do {
-            track =
-                this.playlist[Math.floor(Math.random() * this.playlist.length)];
+            track = this.playlist[Math.floor(Math.random() * this.playlist.length)];
         } while (this.played_tracks.has(track));
         return track;
     }

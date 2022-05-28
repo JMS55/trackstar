@@ -4,10 +4,12 @@ Before doing anything, run:
 
 ---
 
-The file "tracks.json" must be present the top level of the server directory for
-the server to run. If it is not, or to update it, run:
+The server populates a SQLite3 database with songs and playlist information.
+On first install, or to update a playlist, run
 
-    npm run update_tracks <playlist_id> <access_token>
+    npm start <playlist_id> <access_token>
+
+This starts the server once the songs are retrieved.
 
 To get an access token:
 
