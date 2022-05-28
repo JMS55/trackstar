@@ -1,4 +1,5 @@
 import sqlite3, { Database } from 'better-sqlite3';
+import { RoundData } from './game';
 import { logger } from './server';
 
 export class TrackStore {
@@ -15,19 +16,19 @@ export class TrackStore {
                         + 'ON CONFLICT(playlist_id) DO UPDATE SET last_updated = @updated;')
             .run(playlist_id, {updated: new Date().getTime()});
         const songStmt = this.db.prepare(
-            'INSERT INTO songs (song_id, preview_url, img_url, title, artists, add_time) VALUES (?,@prev_url,?,?,?,?)\n'
-                        + 'ON CONFLICT(song_id) DO UPDATE SET preview_url = @prev_url;');
+            'INSERT INTO songs (song_id, preview_url, img_url, title, artists, add_time) VALUES (?,@prev_url,@img_url,?,?,?)\n'
+                        + 'ON CONFLICT(song_id) DO UPDATE SET preview_url = @prev_url, img_url = @img_url;');
         const contentStmt = this.db.prepare('INSERT OR IGNORE INTO contents (playlist_id, song_id) VALUES (?,?);'); //TODO: check removed
         const txn = this.db.transaction((tracks: TrackList) => {
             tracks.forEach((track) => {
                 try {
                     songStmt.run(
                         track.id,
-                        track.image_url,
                         track.title,
                         track.artists.map((artist) => Buffer.from(artist).toString('base64')).join(','),
                         new Date().getTime(),
-                        {prev_url: track.preview_url}
+                        {prev_url: track.preview_url,
+                         img_url: track.image_url}
                     );
                     contentStmt.run(playlist_id, track.id);
                 } catch (e) {
@@ -37,6 +38,17 @@ export class TrackStore {
         });
         txn(tracks);
         logger.info(`Added ${tracks.length} songs to playlist ${playlist_id}`);
+    }
+
+    /** increase title guessed, artist guessed, plays */
+    updatePlays(song_id: string, data: RoundData) {
+        const stmt = this.db.prepare('UPDATE songs SET title_guessed = title_guessed + ?, artist_guessed = artist_guessed + ?, plays = plays + ? WHERE song_id = ?;');
+        try {
+            stmt.run(data.title, data.artist, data.plays, song_id);
+            logger.info(`Added ${data.title} title guesses, ${data.artist} artist guesses, ${data.plays} plays to song ${song_id}`);
+        } catch (e) {
+            logger.warn(`Error while updating plays for song ${song_id}: ${e}`);
+        }
     }
 
     /** Retrieve songs for a playlist. */
