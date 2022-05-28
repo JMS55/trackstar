@@ -3,8 +3,9 @@ import { inspect } from 'util';
 import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
-import { TrackStore } from './data';
+import { TrackList, TrackStore } from './data';
 import { fetchTracks } from './spotify';
+import { sys } from 'typescript';
 
 export const logger = winston.createLogger({
     transports: [new winston.transports.Console()],
@@ -21,6 +22,9 @@ export const logger = winston.createLogger({
 
 /** We use Spotify previews, which are 30 seconds long */
 const TRACK_PLAY_LENGTH_SECS = 30;
+
+/** All games are this playlist (for now) */
+const DEFAULT_PLAYLIST = "5NeJXqMCPAspzrADl9ppKn";
 
 /** Topics for server/client messages */
 const enum Topic {
@@ -118,11 +122,11 @@ class Room {
     game: Game;
     timeouts: Array<NodeJS.Timeout>;
 
-    constructor(id: string, creator: Player) {
+    constructor(id: string, creator: Player, playlist: TrackList) {
         this.id = id;
         this.creator = creator;
         this.players = [];
-        this.game = new Game();
+        this.game = new Game(playlist);
         this.timeouts = [];
     }
 
@@ -304,6 +308,7 @@ function sendMessage(player: Player, message: ServerWSMessage) {
 /** When client connects: create player, add player to room (create room first if it does not exist) */
 function handleNewConnection(
     rooms: Map<string, Room>,
+    tracks: TrackList,
     ws: WebSocket,
     request_url: string
 ): [Room, Player] {
@@ -319,7 +324,7 @@ function handleNewConnection(
         room = rooms.get(room_id)!;
     } else {
         logger.debug(`Room ${room_id} has been created`);
-        room = new Room(room_id, new_player);
+        room = new Room(room_id, new_player, tracks);
     }
     rooms.set(room_id, room);
     room.addPlayer(new_player);
@@ -389,22 +394,32 @@ function prettyJson(input: string) {
 
 
 async function main() {
-    //Open database
+    //Open database, fetch songs
     const data = new TrackStore();
 
     const args = process.argv.slice(2);
+    let playlist_id;
     if (args.length == 2) {
-        const [playlist_id, access_token] = args;
+        const [playlist_arg, access_token] = args;
+        playlist_id = playlist_arg;
+        logger.info("Pulling tracks from spotify.");
         const tracks = await fetchTracks(playlist_id!, access_token!);
+        logger.info("Loading songs into database.");
         data.loadSongs(playlist_id, tracks);
     }
+    logger.info("Retrieving songs from database.");
+    const tracks = data.getSongs(playlist_id? playlist_id : DEFAULT_PLAYLIST);
+    if (tracks.length == 0) {
+        logger.error("No tracks found in playlist. Rerun with playlist-id and access-token arguments.");
+        sys.exit(1);
+    }
+    logger.info("Ready to start.");
     
-
     //Start server
     const rooms = new Map();
     const wss = new Server({ port: 8080 });
     wss.on('connection', (ws, request) => {
-        const [room, player] = handleNewConnection(rooms, ws, request.url!);
+        const [room, player] = handleNewConnection(rooms, tracks, ws, request.url!);
         ws.on('close', () => handleClosedConnection(rooms, room, player));
         ws.on('message', (data) => handleMessage(room, player, data.toString()));
     });

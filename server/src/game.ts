@@ -51,20 +51,20 @@ export class Game {
     state: State;
     tracks_per_round: number | null;
     secs_between_tracks: number | null;
-    playlist: TrackList;
     current_track: Track | null;
     current_track_number: number;
+    playlist: TrackList;
     played_tracks: Set<Track>;
     leaderboard: Map<string, Standing>;
     completions: Array<Completion>;
 
-    constructor() {
+    constructor(playlist: TrackList) {
         this.state = State.LOBBY;
         this.tracks_per_round = null;
         this.secs_between_tracks = null;
-        this.playlist = [];
         this.current_track = null;
         this.current_track_number = 0;
+        this.playlist = playlist;
         this.played_tracks = new Set();
         this.leaderboard = new Map();
         this.completions = [];
@@ -189,7 +189,8 @@ export class Game {
         });
         this.completions = [];
     }
-
+    
+    /** Pick an unplayed song for the next track. */
     getRandomUnplayedTrack() {
         var track;
         do {
@@ -197,5 +198,4 @@ export class Game {
         } while (this.played_tracks.has(track));
         return track;
     }
-    
 }

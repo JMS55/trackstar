@@ -1,8 +1,6 @@
-import fs from 'fs';
 import fetch from 'node-fetch';
 import Spotify from 'spotify-web-api-node';
 import { logger } from './server';
-import { sys } from 'typescript';
 import { TrackList } from './data';
 
 /** Max tracks Spotify will let us read from a playlist */
@@ -93,9 +91,11 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
                 .replace('%3A', ':')
                 .replace(/%2F/g, '/');
             track.preview_url = preview_url;
-            return track;
+        } catch (err) {
+            logger.warn(`Error fetching track preview URL: ${err}`);
         } finally {
             clearTimeout(timeout);
+            return track;
         }
     }));
     return await trackProm;
