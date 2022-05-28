@@ -4,7 +4,10 @@ import { Track } from './data';
 export function isCorrectTitle(track: Track, guess: string) {
     const guessSimple = simplifyString(guess);
     const titleStripped = stripTitle(track.title);
-    return closeEnough(simplifyString(titleStripped), guessSimple) || closeEnough(simplifyString(titleStripped, true), guessSimple);
+    return (
+        closeEnough(simplifyString(titleStripped), guessSimple) ||
+        closeEnough(simplifyString(titleStripped, true), guessSimple)
+    );
 }
 
 /** Return whether guess (or "the" + guess) is close to an artist */
@@ -28,16 +31,21 @@ export function isCorrectArtist(track: Track, guess: string) {
  */
 function simplifyString(str: string, spell_amp: boolean = false) {
     return str
-        .normalize('NFD')                      // Separate letters from their accents
-        .replace(/[\u0300-\u036f]/g, '')       // Remove the accent characters
-        .toLowerCase()                         // Lowercase
-        .replace('&', spell_amp ? 'and' : '')  // Either remove & or replace with 'and'
-        .replace(/[^a-z0-9]/g, '');            // Remove all non-alphanumerics
+        .normalize('NFD') // Separate letters from their accents
+        .replace(/[\u0300-\u036f]/g, '') // Remove the accent characters
+        .toLowerCase() // Lowercase
+        .replace('&', spell_amp ? 'and' : '') // Either remove & or replace with 'and'
+        .replace(/[^a-z0-9]/g, ''); // Remove all non-alphanumerics
 }
 
 /** Remove things like "(feat. Rihanna)" and "- Radio Edit" from title */
 function stripTitle(title: string) {
-    [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/].forEach(regex => {
+    [
+        /^\(.*\)\s+(.*)$/,
+        /^(.*)\s+\(.*\)$/,
+        /^(.*)\s+-.*$/,
+        /^(.*)\s+\/.*$/,
+    ].forEach((regex) => {
         const found = title.match(regex);
         if (found) {
             title = found[1];

@@ -39,7 +39,11 @@ const enum Topic {
 /////////////////////////////////////////////
 
 /** All Server -> Client messages */
-type ServerWSMessage = WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
+type ServerWSMessage =
+    | WSGameConfig
+    | WSTrackInfo
+    | WSGuessResult
+    | WSLeaderBoard;
 
 /** Configuration of the room's game */
 interface WSGameConfig {
@@ -136,7 +140,7 @@ class Room {
     }
 
     deletePlayer(player: Player) {
-        this.players = this.players.filter(p => p != player);
+        this.players = this.players.filter((p) => p != player);
         this.game.deletePlayer(player.name);
         this.sendLeaderboard();
     }
