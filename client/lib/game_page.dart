@@ -18,6 +18,7 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   final guessController = TextEditingController();
   bool canGuess = false;
+  bool guessFieldBackgroundColor = true;
   SplayTreeMap<String, Standing> sortedLeaderboard = SplayTreeMap();
 
   @override
@@ -298,9 +299,21 @@ class _GamePageState extends State<GamePage> {
       return guessStatusWidget;
     } else {
       return Column(children: [
-        TextFieldM3(
-          hintText: 'Guess',
-          controller: guessController,
+        TweenAnimationBuilder<Color?>(
+          tween: ColorTween(
+            begin: Theme.of(context).colorScheme.surfaceVariant,
+            end: guessFieldBackgroundColor
+                ? Theme.of(context).colorScheme.surfaceVariant
+                : Theme.of(context).colorScheme.errorContainer,
+          ),
+          curve: Curves.easeInOut,
+          duration: const Duration(milliseconds: 375),
+          builder: (BuildContext context, Color? color, Widget? child) =>
+              TextFieldM3(
+            hintText: 'Guess',
+            controller: guessController,
+            backgroundColor: color,
+          ),
         ),
         const SizedBox(height: 16),
         guessStatusWidget,
@@ -346,31 +359,40 @@ class _GamePageState extends State<GamePage> {
       setState(() => canGuess = guessController.text.isNotEmpty);
     });
 
-    widget.trackStarService.changeSignal = (_) => setState(() {
-          if (widget.trackStarService.gameState == GameState.guessing) {
-            sortedLeaderboard = SplayTreeMap.from(
-              widget.trackStarService.leaderboard,
-              (key1, key2) => widget.trackStarService.leaderboard[key1]!
-                  .compareTo(widget.trackStarService.leaderboard[key2]!),
-            );
+    widget.trackStarService.changeSignal = (_) {
+      setState(() {
+        if (widget.trackStarService.gameState == GameState.guessing) {
+          sortedLeaderboard = SplayTreeMap.from(
+            widget.trackStarService.leaderboard,
+            (key1, key2) => widget.trackStarService.leaderboard[key1]!
+                .compareTo(widget.trackStarService.leaderboard[key2]!),
+          );
 
-            if (widget.trackStarService.lastGuessCorrect == true) {
-              guessController.clear();
-            }
-            widget.trackStarService.lastGuessCorrect = null;
-          }
-
-          if (widget.trackStarService.gameState == GameState.betweenTracks) {
-            canGuess = false;
+          if (widget.trackStarService.lastGuessCorrect == true) {
             guessController.clear();
-
-            sortedLeaderboard = SplayTreeMap.from(
-              widget.trackStarService.leaderboard,
-              (key1, key2) => widget.trackStarService.leaderboard[key1]!.score
-                  .compareTo(widget.trackStarService.leaderboard[key2]!.score),
+          }
+          if (widget.trackStarService.lastGuessCorrect == false) {
+            guessFieldBackgroundColor = false;
+            Future.delayed(
+              const Duration(milliseconds: 375),
+              () => setState(() => guessFieldBackgroundColor = true),
             );
           }
-        });
+          widget.trackStarService.lastGuessCorrect = null;
+        }
+
+        if (widget.trackStarService.gameState == GameState.betweenTracks) {
+          canGuess = false;
+          guessController.clear();
+
+          sortedLeaderboard = SplayTreeMap.from(
+            widget.trackStarService.leaderboard,
+            (key1, key2) => widget.trackStarService.leaderboard[key1]!.score
+                .compareTo(widget.trackStarService.leaderboard[key2]!.score),
+          );
+        }
+      });
+    };
 
     super.initState();
   }

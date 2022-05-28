@@ -45,6 +45,7 @@ class TextFieldM3 extends StatelessWidget {
     this.suffixIcon,
     this.inputFormatters,
     this.keyboardType,
+    this.backgroundColor,
   }) : super(key: key);
 
   final String hintText;
@@ -52,6 +53,7 @@ class TextFieldM3 extends StatelessWidget {
   final Widget? suffixIcon;
   final List<TextInputFormatter>? inputFormatters;
   final TextInputType? keyboardType;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +66,8 @@ class TextFieldM3 extends StatelessWidget {
         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         decoration: InputDecoration(
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant,
+          fillColor:
+              backgroundColor ?? Theme.of(context).colorScheme.surfaceVariant,
           suffixIconColor: Theme.of(context).colorScheme.onSurface,
           labelText: hintText,
           labelStyle: Theme.of(context).textTheme.bodyLarge!.copyWith(
