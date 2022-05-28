@@ -11,14 +11,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int selectedPageIndex = 0;
+  final usernameController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: selectedPageIndex == 0
-            ? const CreateRoomPage()
-            : const JoinRoomPage(),
+            ? CreateRoomPage(usernameController: usernameController)
+            : JoinRoomPage(usernameController: usernameController),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedPageIndex,
@@ -35,5 +36,12 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+
+    super.dispose();
   }
 }

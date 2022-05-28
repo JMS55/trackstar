@@ -4,7 +4,10 @@ import 'lobby_page.dart';
 import 'widgets.dart';
 
 class JoinRoomPage extends StatefulWidget {
-  const JoinRoomPage({Key? key}) : super(key: key);
+  const JoinRoomPage({Key? key, required this.usernameController})
+      : super(key: key);
+
+  final TextEditingController usernameController;
 
   @override
   State<JoinRoomPage> createState() => _JoinRoomPageState();
@@ -12,7 +15,7 @@ class JoinRoomPage extends StatefulWidget {
 
 class _JoinRoomPageState extends State<JoinRoomPage> {
   final roomIdController = TextEditingController();
-  final usernameController = TextEditingController();
+  late void Function() usernameListener;
   bool canNagivateToLobby = false;
 
   @override
@@ -26,7 +29,7 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
           padding: const EdgeInsets.symmetric(horizontal: 48),
           child: Column(children: [
             TextFieldM3(
-              controller: usernameController,
+              controller: widget.usernameController,
               hintText: 'Name',
             ),
             const SizedBox(height: 12),
@@ -55,7 +58,7 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
       MaterialPageRoute(
         builder: (context) => LobbyPage(
           roomId: int.parse(roomIdController.text),
-          username: usernameController.text,
+          username: widget.usernameController.text,
           isRoomCreator: false,
         ),
       ),
@@ -67,15 +70,15 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
     roomIdController.addListener(() {
       setState(() {
         canNagivateToLobby = roomIdController.text.isNotEmpty &&
-            usernameController.text.isNotEmpty;
+            widget.usernameController.text.isNotEmpty;
       });
     });
-    usernameController.addListener(() {
-      setState(() {
-        canNagivateToLobby = roomIdController.text.isNotEmpty &&
-            usernameController.text.isNotEmpty;
-      });
-    });
+
+    usernameListener = () => setState(() {
+          canNagivateToLobby = roomIdController.text.isNotEmpty &&
+              widget.usernameController.text.isNotEmpty;
+        });
+    widget.usernameController.addListener(usernameListener);
 
     super.initState();
   }
@@ -83,7 +86,8 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
   @override
   void dispose() {
     roomIdController.dispose();
-    usernameController.dispose();
+
+    widget.usernameController.removeListener(usernameListener);
 
     super.dispose();
   }

@@ -3,15 +3,18 @@ import 'lobby_page.dart';
 import 'widgets.dart';
 
 class CreateRoomPage extends StatefulWidget {
-  const CreateRoomPage({Key? key}) : super(key: key);
+  const CreateRoomPage({Key? key, required this.usernameController})
+      : super(key: key);
+
+  final TextEditingController usernameController;
 
   @override
   State<CreateRoomPage> createState() => _CreateRoomPageState();
 }
 
 class _CreateRoomPageState extends State<CreateRoomPage> {
-  final usernameController = TextEditingController();
-  bool canNagivateToLobby = false;
+  late void Function() usernameListener;
+  late bool canNagivateToLobby;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +27,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
           padding: const EdgeInsets.symmetric(horizontal: 48),
           child: TextFieldM3(
             hintText: 'Name',
-            controller: usernameController,
+            controller: widget.usernameController,
             suffixIcon: canNagivateToLobby
                 ? IconButton(
                     icon: const Icon(Icons.navigate_next_rounded),
@@ -43,7 +46,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       context,
       MaterialPageRoute(
         builder: (context) => LobbyPage(
-          username: usernameController.text,
+          username: widget.usernameController.text,
           isRoomCreator: true,
         ),
       ),
@@ -52,16 +55,19 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
 
   @override
   void initState() {
-    usernameController.addListener(() {
-      setState(() => canNagivateToLobby = usernameController.text.isNotEmpty);
-    });
+    canNagivateToLobby = widget.usernameController.text.isNotEmpty;
+
+    usernameListener = () => setState(() {
+          canNagivateToLobby = widget.usernameController.text.isNotEmpty;
+        });
+    widget.usernameController.addListener(usernameListener);
 
     super.initState();
   }
 
   @override
   void dispose() {
-    usernameController.dispose();
+    widget.usernameController.removeListener(usernameListener);
 
     super.dispose();
   }
