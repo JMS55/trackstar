@@ -49,7 +49,7 @@ export class TrackStore {
 
         try {
             for (var row of stmt.iterate(playlist_id)) {
-                const artists = row.artists.split(',').map((s: string) => Buffer.from(s, 'base64').toString('ascii'));
+                const artists = row.artists.split(',').map((s: string) => Buffer.from(s, 'base64').toString('utf8'));
                 songs.push({
                     id: row.song_id,
                     title: row.title,

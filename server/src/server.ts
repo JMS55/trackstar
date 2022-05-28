@@ -352,6 +352,11 @@ function prettyJson(input: string) {
     return JSON.stringify(JSON.parse(input), null, 2);
 }
 
+/** Delete any tracks that don't have a preview URL */
+function removeTracksWithNullURL(tracks: TrackList): TrackList {
+    return tracks.filter((t) => t.preview_url);
+}
+
 async function main() {
     //Open database, fetch songs
     const data = new TrackStore();
@@ -367,9 +372,9 @@ async function main() {
         data.loadSongs(playlist_id, tracks);
     }
     logger.info('Retrieving songs from database.');
-    const tracks = data.getSongs(playlist_id ? playlist_id : DEFAULT_PLAYLIST);
+    const tracks = removeTracksWithNullURL(data.getSongs(playlist_id ? playlist_id : DEFAULT_PLAYLIST));
     if (tracks.length == 0) {
-        logger.error('No tracks found in playlist. Rerun with playlist-id, client-id, and client-secret arguments.');
+        logger.error('No tracks found in playlist. Rerun with playlist-id and access-token arguments.');
         process.exit(1);
     }
     logger.info('Ready to start.');

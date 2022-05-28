@@ -11,11 +11,6 @@ const WEB_SCRAPE_TIMEOUT = 500;
 
 const API_INSTANCE = new Spotify();
 
-/** Delete any tracks that don't have a preview URL */
-function removeTracksWithNullURL(tracks: TrackList): TrackList {
-    tracks.filter((t) => t.preview_url);
-    return tracks;
-}
 
 /** Recursively get all tracks from the playlist with the given ID */
 async function pullTracks(playlist_id: string, offset = 0): Promise<TrackList> {
@@ -100,6 +95,5 @@ export async function fetchTracks(playlist_id: string, access_token: string): Pr
     API_INSTANCE.setAccessToken(access_token);
     let tracks = await pullTracks(playlist_id, 0);
     tracks = await fillMissingUrls(tracks);
-    tracks = removeTracksWithNullURL(tracks);
     return tracks;
 }
