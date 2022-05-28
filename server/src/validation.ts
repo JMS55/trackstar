@@ -15,10 +15,7 @@ export function isCorrectArtist(track: Track, guess: string) {
     const guessSimple = simplifyString(guess);
     for (const artist of track.artists) {
         const artistSimple = simplifyString(artist);
-        if (
-            closeEnough(artistSimple, guessSimple) ||
-            closeEnough(artistSimple, 'the' + guessSimple)
-        ) {
+        if (closeEnough(artistSimple, guessSimple) || closeEnough(artistSimple, 'the' + guessSimple)) {
             return true;
         }
     }
@@ -40,12 +37,7 @@ function simplifyString(str: string, spell_amp: boolean = false) {
 
 /** Remove things like "(feat. Rihanna)" and "- Radio Edit" from title */
 function stripTitle(title: string) {
-    [
-        /^\(.*\)\s+(.*)$/,
-        /^(.*)\s+\(.*\)$/,
-        /^(.*)\s+-.*$/,
-        /^(.*)\s+\/.*$/,
-    ].forEach((regex) => {
+    [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/].forEach((regex) => {
         const found = title.match(regex);
         if (found) {
             title = found[1];

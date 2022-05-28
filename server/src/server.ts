@@ -12,9 +12,7 @@ export const logger = winston.createLogger({
         format.colorize(),
         format.timestamp(),
         format.align(),
-        format.printf(
-            (info) => `${info.timestamp} ${info.level}: ${info.message}`
-        )
+        format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}`)
     ),
     level: process.env.TS_LOG_LEVEL ?? 'debug',
 });
@@ -39,11 +37,7 @@ const enum Topic {
 /////////////////////////////////////////////
 
 /** All Server -> Client messages */
-type ServerWSMessage =
-    | WSGameConfig
-    | WSTrackInfo
-    | WSGuessResult
-    | WSLeaderBoard;
+type ServerWSMessage = WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
 
 /** Configuration of the room's game */
 interface WSGameConfig {
@@ -171,10 +165,7 @@ class Room {
      */
     startRound() {
         //Round should only start from lobby or between rounds
-        if (
-            this.game.state != State.LOBBY &&
-            this.game.state != State.BETWEEN_ROUNDS
-        ) {
+        if (this.game.state != State.LOBBY && this.game.state != State.BETWEEN_ROUNDS) {
             return;
         }
 
@@ -204,8 +195,7 @@ class Room {
             title: track.title,
             aritsts: track.artists,
             track_number: this.game.current_track_number,
-            when_to_start:
-                Date.now() + (this.game.secs_between_tracks! / 2) * 1000, //now + wait/2
+            when_to_start: Date.now() + (this.game.secs_between_tracks! / 2) * 1000, //now + wait/2
         });
 
         //Set game state to TRACK once the track starts playing
@@ -239,8 +229,7 @@ class Room {
         //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
         else {
             this.addTimeout(
-                (this.game.secs_between_tracks! * 3) / 2 +
-                    TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
+                (this.game.secs_between_tracks! * 3) / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
                 () => this.setGameState(State.BETWEEN_ROUNDS)
             );
         }
@@ -253,11 +242,7 @@ class Room {
             return;
         }
 
-        const result = this.game.processGuess(
-            player.name,
-            guess,
-            guess_epoch_millis
-        );
+        const result = this.game.processGuess(player.name, guess, guess_epoch_millis);
         sendMessage(player, {
             topic: Topic.GUESS_RESULT,
             result: result,
@@ -281,11 +266,7 @@ function sendMessage(player: Player, message: ServerWSMessage) {
     const message_json: string = JSON.stringify(message, (_key, value) =>
         value instanceof Map ? Object.fromEntries(value) : value
     );
-    logger.debug(
-        `Message sent to player ${player.name} in room ${
-            player.room
-        }...\n${prettyJson(message_json)}`
-    );
+    logger.debug(`Message sent to player ${player.name} in room ${player.room}...\n${prettyJson(message_json)}`);
     player.client.send(message_json);
 }
 
@@ -316,11 +297,7 @@ function handleNewConnection(
 }
 
 /** When client disconnects: delete player, delete room if empty */
-function handleClosedConnection(
-    rooms: Map<string, Room>,
-    room: Room,
-    player: Player
-) {
+function handleClosedConnection(rooms: Map<string, Room>, room: Room, player: Player) {
     logger.debug(`Player ${player.name} has left room ${room.id}`);
     room.deletePlayer(player);
     if (room.players.length == 0) {
@@ -353,19 +330,12 @@ function handleMessage(room: Room, player: Player, message_json: string) {
         return;
     }
 
-    logger.debug(
-        `Message received from player ${player.name} for room ${
-            room.id
-        }...\n${prettyJson(message_json)}`
-    );
+    logger.debug(`Message received from player ${player.name} for room ${room.id}...\n${prettyJson(message_json)}`);
 
     //Process message
     switch (message.topic) {
         case Topic.START_GAME_COMMAND:
-            room.setGameConfig(
-                message.tracks_per_round,
-                message.time_between_tracks
-            ); //Missing break is intentional
+            room.setGameConfig(message.tracks_per_round, message.time_between_tracks); //Missing break is intentional
         case Topic.START_ROUND_COMMAND:
             room.startRound();
             break;
@@ -397,9 +367,7 @@ async function main() {
     logger.info('Retrieving songs from database.');
     const tracks = data.getSongs(playlist_id ? playlist_id : DEFAULT_PLAYLIST);
     if (tracks.length == 0) {
-        logger.error(
-            'No tracks found in playlist. Rerun with playlist-id and access-token arguments.'
-        );
+        logger.error('No tracks found in playlist. Rerun with playlist-id and access-token arguments.');
         sys.exit(1);
     }
     logger.info('Ready to start.');
@@ -408,16 +376,9 @@ async function main() {
     const rooms = new Map();
     const wss = new Server({ port: 8080 });
     wss.on('connection', (ws, request) => {
-        const [room, player] = handleNewConnection(
-            rooms,
-            tracks,
-            ws,
-            request.url!
-        );
+        const [room, player] = handleNewConnection(rooms, tracks, ws, request.url!);
         ws.on('close', () => handleClosedConnection(rooms, room, player));
-        ws.on('message', (data) =>
-            handleMessage(room, player, data.toString())
-        );
+        ws.on('message', (data) => handleMessage(room, player, data.toString()));
     });
     logger.info('TrackStar server started!');
 }
