@@ -277,7 +277,8 @@ function handleNewConnection(
     request_url: string
 ): [Room, Player] {
     logger.debug(`Client connected with URL... ${request_url}`);
-    const [room_id, player_name] = request_url.slice(1).split('/');
+    let [room_id, player_name] = request_url.slice(1).split('/');
+    player_name = decodeURIComponent(player_name);
     const new_player: Player = {
         client: ws,
         name: player_name,
