@@ -366,11 +366,7 @@ class _GamePageState extends State<GamePage> {
             (key1, key2) {
               int c = widget.trackStarService.leaderboard[key1]!
                   .compareTo(widget.trackStarService.leaderboard[key2]!);
-              if (c == 0) {
-                return key1.compareTo(key2);
-              } else {
-                return c;
-              }
+              return c != 0 ? c : key1.compareTo(key2);
             },
           );
 
@@ -394,13 +390,9 @@ class _GamePageState extends State<GamePage> {
           sortedLeaderboard = SplayTreeMap.from(
             widget.trackStarService.leaderboard,
             (key1, key2) {
-              int c = widget.trackStarService.leaderboard[key1]!.score
+              int c = -widget.trackStarService.leaderboard[key1]!.score
                   .compareTo(widget.trackStarService.leaderboard[key2]!.score);
-              if (c == 0) {
-                return key1.compareTo(key2);
-              } else {
-                return c;
-              }
+              return c != 0 ? c : key1.compareTo(key2);
             },
           );
         }
