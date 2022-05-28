@@ -100,6 +100,14 @@ class TrackStarService {
     Future.delayed(
       delayUntilTrackStart,
       () {
+        for (String username in leaderboard.keys) {
+          leaderboard[username] = Standing(
+              leaderboard[username]!.score,
+              leaderboard[username]!.pointsFromCurrentTrack,
+              Progress.noneCorrect,
+              Place.none);
+        }
+
         trackNumber = msg.trackNumber;
         trackStartTime = msg.whenToStart;
         trackTitle = msg.title;

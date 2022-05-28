@@ -205,7 +205,9 @@ class _GamePageState extends State<GamePage> {
                 child: AvatarCircle(username: username),
               ),
               title: Text(username),
-              subtitle: Text('Score: ${standing.score}'),
+              subtitle: Text(
+                'Score: ${standing.score + standing.pointsFromCurrentTrack}',
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
