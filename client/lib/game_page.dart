@@ -384,7 +384,7 @@ class _GamePageState extends State<GamePage> {
 
           sortedLeaderboard = SplayTreeMap.from(
             widget.trackStarService.leaderboard,
-            (key1, key2) => widget.trackStarService.leaderboard[key1]!.score
+            (key1, key2) => -widget.trackStarService.leaderboard[key1]!.score
                 .compareTo(widget.trackStarService.leaderboard[key2]!.score),
           );
         }

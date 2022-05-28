@@ -25,6 +25,10 @@ class _LobbyPageState extends State<LobbyPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (trackStarService.trackNumber == 1) {
+      Future.delayed(Duration.zero, () => navigateToGamePage());
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Lobby')),
       body: SafeArea(
@@ -123,13 +127,7 @@ class _LobbyPageState extends State<LobbyPage> {
     trackStarService = TrackStarService(
       roomId: widget.roomId,
       userName: widget.username,
-      changeSignal: (_) {
-        setState(() {
-          if (trackStarService.trackNumber == 1) {
-            navigateToGamePage();
-          }
-        });
-      },
+      changeSignal: setState,
     );
 
     super.initState();

@@ -94,18 +94,18 @@ class TrackStarService {
   }
 
   void handleTrackInfo(TrackInfoMessage msg) {
-    trackNumber = msg.trackNumber;
-    trackStartTime = msg.whenToStart;
-    trackTitle = msg.title;
-    trackArtists = msg.aritsts;
-    albumCoverUrl = msg.albumCoverUrl;
-
     Duration delayUntilTrackStart =
         DateTime.fromMillisecondsSinceEpoch(trackStartTime, isUtc: true)
             .difference(DateTime.now().toUtc());
     Future.delayed(
       delayUntilTrackStart,
       () {
+        trackNumber = msg.trackNumber;
+        trackStartTime = msg.whenToStart;
+        trackTitle = msg.title;
+        trackArtists = msg.aritsts;
+        albumCoverUrl = msg.albumCoverUrl;
+
         gameState = GameState.guessing;
         audioPlayer.play(msg.url, isLocal: false);
 
