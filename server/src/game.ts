@@ -189,12 +189,13 @@ export class Game {
         });
         this.completions = [];
     }
-    
+
     /** Pick an unplayed song for the next track. */
     getRandomUnplayedTrack() {
         var track;
         do {
-            track = this.playlist[Math.floor(Math.random() * this.playlist.length)];
+            track =
+                this.playlist[Math.floor(Math.random() * this.playlist.length)];
         } while (this.played_tracks.has(track));
         return track;
     }

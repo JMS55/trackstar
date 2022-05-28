@@ -11,15 +11,18 @@ const WEB_SCRAPE_TIMEOUT = 500;
 
 const API_INSTANCE = new Spotify();
 
-
 /** Delete any tracks that don't have a preview URL */
-function removeTracksWithNullURL(tracks: TrackList) : TrackList {
+function removeTracksWithNullURL(tracks: TrackList): TrackList {
     tracks.filter((t) => t.preview_url);
     return tracks;
 }
 
 /** Recursively get all tracks from the playlist with the given ID */
-async function pullTracks(playlist_id: string, token: string, offset = 0): Promise<TrackList> {
+async function pullTracks(
+    playlist_id: string,
+    token: string,
+    offset = 0
+): Promise<TrackList> {
     //Get raw track data
     const data = await API_INSTANCE.getPlaylistTracks(playlist_id, {
         offset: offset,
@@ -48,7 +51,11 @@ async function pullTracks(playlist_id: string, token: string, offset = 0): Promi
 
     //Recur if last request returned max items
     if (songItems.length == TRACK_PULL_LIMIT) {
-        const newTracks = await pullTracks(playlist_id, token, offset + TRACK_PULL_LIMIT);
+        const newTracks = await pullTracks(
+            playlist_id,
+            token,
+            offset + TRACK_PULL_LIMIT
+        );
         return songItems.concat(newTracks);
     }
     return songItems;
@@ -61,48 +68,54 @@ async function pullTracks(playlist_id: string, token: string, offset = 0): Promi
  * take too long, so we set a timeout and try/catch the whole process.
  */
 async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
-    const trackProm = Promise.all(tracks.map(async (track) => {
-        //Continue if track already has a preview URL
-        if (track.preview_url) {
-            return track;
-        }
+    const trackProm = Promise.all(
+        tracks.map(async (track) => {
+            //Continue if track already has a preview URL
+            if (track.preview_url) {
+                return track;
+            }
 
-        //Configure web request
-        const embed_url = 'https://open.spotify.com/embed/track/' + track.id;
-        const AbortController = globalThis.AbortController;
-        const controller = new AbortController();
-        const timeout = setTimeout(
-            () => controller.abort(),
-            WEB_SCRAPE_TIMEOUT
-        );
-
-        //Attempt to scrape the embed page
-        try {
-            const response = await fetch(embed_url, {
-                signal: controller.signal,
-            });
-            const body = await response.text();
-            const tail = body.substring(body.indexOf('preview_url') + 20);
-            const preview_url_encoded = tail.substring(
-                0,
-                tail.indexOf('%3Fcid%3D')
+            //Configure web request
+            const embed_url =
+                'https://open.spotify.com/embed/track/' + track.id;
+            const AbortController = globalThis.AbortController;
+            const controller = new AbortController();
+            const timeout = setTimeout(
+                () => controller.abort(),
+                WEB_SCRAPE_TIMEOUT
             );
-            const preview_url = preview_url_encoded
-                .replace('%3A', ':')
-                .replace(/%2F/g, '/');
-            track.preview_url = preview_url;
-        } catch (err) {
-            logger.warn(`Error fetching track preview URL: ${err}`);
-        } finally {
-            clearTimeout(timeout);
-            return track;
-        }
-    }));
+
+            //Attempt to scrape the embed page
+            try {
+                const response = await fetch(embed_url, {
+                    signal: controller.signal,
+                });
+                const body = await response.text();
+                const tail = body.substring(body.indexOf('preview_url') + 20);
+                const preview_url_encoded = tail.substring(
+                    0,
+                    tail.indexOf('%3Fcid%3D')
+                );
+                const preview_url = preview_url_encoded
+                    .replace('%3A', ':')
+                    .replace(/%2F/g, '/');
+                track.preview_url = preview_url;
+            } catch (err) {
+                logger.warn(`Error fetching track preview URL: ${err}`);
+            } finally {
+                clearTimeout(timeout);
+                return track;
+            }
+        })
+    );
     return await trackProm;
 }
 
 /** Update tracks.json with the tracks from the given playlist */
-export async function fetchTracks(playlist_id: string, access_token: string): Promise<TrackList> {
+export async function fetchTracks(
+    playlist_id: string,
+    access_token: string
+): Promise<TrackList> {
     API_INSTANCE.setAccessToken(access_token);
     let tracks = await pullTracks(playlist_id, access_token, 0);
     tracks = await fillMissingUrls(tracks);

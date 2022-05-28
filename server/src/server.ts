@@ -24,7 +24,7 @@ export const logger = winston.createLogger({
 const TRACK_PLAY_LENGTH_SECS = 30;
 
 /** All games are this playlist (for now) */
-const DEFAULT_PLAYLIST = "5NeJXqMCPAspzrADl9ppKn";
+const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
 
 /** Topics for server/client messages */
 const enum Topic {
@@ -317,7 +317,7 @@ function handleNewConnection(
     const new_player: Player = {
         client: ws,
         name: player_name,
-        room: room_id
+        room: room_id,
     };
     let room: Room;
     if (rooms.has(room_id)) {
@@ -332,7 +332,11 @@ function handleNewConnection(
 }
 
 /** When client disconnects: delete player, delete room if empty */
-function handleClosedConnection(rooms: Map<string, Room>, room: Room, player: Player) {
+function handleClosedConnection(
+    rooms: Map<string, Room>,
+    room: Room,
+    player: Player
+) {
     logger.debug(`Player ${player.name} has left room ${room.id}`);
     room.deletePlayer(player);
     if (room.players.length == 0) {
@@ -392,7 +396,6 @@ function prettyJson(input: string) {
     return JSON.stringify(JSON.parse(input), null, 2);
 }
 
-
 async function main() {
     //Open database, fetch songs
     const data = new TrackStore();
@@ -402,26 +405,35 @@ async function main() {
     if (args.length == 2) {
         const [playlist_arg, access_token] = args;
         playlist_id = playlist_arg;
-        logger.info("Pulling tracks from spotify.");
+        logger.info('Pulling tracks from spotify.');
         const tracks = await fetchTracks(playlist_id!, access_token!);
-        logger.info("Loading songs into database.");
+        logger.info('Loading songs into database.');
         data.loadSongs(playlist_id, tracks);
     }
-    logger.info("Retrieving songs from database.");
-    const tracks = data.getSongs(playlist_id? playlist_id : DEFAULT_PLAYLIST);
+    logger.info('Retrieving songs from database.');
+    const tracks = data.getSongs(playlist_id ? playlist_id : DEFAULT_PLAYLIST);
     if (tracks.length == 0) {
-        logger.error("No tracks found in playlist. Rerun with playlist-id and access-token arguments.");
+        logger.error(
+            'No tracks found in playlist. Rerun with playlist-id and access-token arguments.'
+        );
         sys.exit(1);
     }
-    logger.info("Ready to start.");
-    
+    logger.info('Ready to start.');
+
     //Start server
     const rooms = new Map();
     const wss = new Server({ port: 8080 });
     wss.on('connection', (ws, request) => {
-        const [room, player] = handleNewConnection(rooms, tracks, ws, request.url!);
+        const [room, player] = handleNewConnection(
+            rooms,
+            tracks,
+            ws,
+            request.url!
+        );
         ws.on('close', () => handleClosedConnection(rooms, room, player));
-        ws.on('message', (data) => handleMessage(room, player, data.toString()));
+        ws.on('message', (data) =>
+            handleMessage(room, player, data.toString())
+        );
     });
     logger.info('TrackStar server started!');
 }
