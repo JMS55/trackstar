@@ -363,8 +363,15 @@ class _GamePageState extends State<GamePage> {
         if (widget.trackStarService.gameState == GameState.guessing) {
           sortedLeaderboard = SplayTreeMap.from(
             widget.trackStarService.leaderboard,
-            (key1, key2) => widget.trackStarService.leaderboard[key1]!
-                .compareTo(widget.trackStarService.leaderboard[key2]!),
+            (key1, key2) {
+              int c = widget.trackStarService.leaderboard[key1]!
+                  .compareTo(widget.trackStarService.leaderboard[key2]!);
+              if (c == 0) {
+                return key1.compareTo(key2);
+              } else {
+                return c;
+              }
+            },
           );
 
           if (widget.trackStarService.lastGuessCorrect == true) {
@@ -386,8 +393,15 @@ class _GamePageState extends State<GamePage> {
 
           sortedLeaderboard = SplayTreeMap.from(
             widget.trackStarService.leaderboard,
-            (key1, key2) => -widget.trackStarService.leaderboard[key1]!.score
-                .compareTo(widget.trackStarService.leaderboard[key2]!.score),
+            (key1, key2) {
+              int c = widget.trackStarService.leaderboard[key1]!.score
+                  .compareTo(widget.trackStarService.leaderboard[key2]!.score);
+              if (c == 0) {
+                return key1.compareTo(key2);
+              } else {
+                return c;
+              }
+            },
           );
         }
       });
