@@ -97,16 +97,74 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget buildBetweenTracksPage(BuildContext context) {
-    // TODO
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Text('That track was:'),
-        Text(widget.trackStarService.trackTitle)
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  // TODO: Non-hardcoded image
+                  'https://i.scdn.co/image/ab67616d00001e021d13a9948aab982fabdf5209',
+                  width: 120,
+                  height: 120,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Flexible(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.music_note),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              widget.trackStarService.trackTitle,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.brush),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              widget.trackStarService.trackArtists.join(', '),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          Flexible(child: buildLeaderboard(context)),
+        ],
+      ),
     );
-    // Text('That track was ${widget.trackStarService.trackTitle} by ${widget.trackStarService.trackArtists.join(', ')}!');
   }
 
   Widget buildLeaderboard(BuildContext context) {
