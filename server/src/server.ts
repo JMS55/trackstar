@@ -4,7 +4,6 @@ import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
 import { TrackList, TrackStore } from './data';
 import { fetchTracks } from './spotify';
-import { sys } from 'typescript';
 
 export const logger = winston.createLogger({
     transports: [new winston.transports.Console()],
@@ -356,19 +355,19 @@ async function main() {
 
     const args = process.argv.slice(2);
     let playlist_id;
-    if (args.length == 2) {
-        const [playlist_arg, access_token] = args;
+    if (args.length == 3) {
+        const [playlist_arg, client_id, client_secret] = args;
         playlist_id = playlist_arg;
         logger.info('Pulling tracks from spotify.');
-        const tracks = await fetchTracks(playlist_id!, access_token!);
+        const tracks = await fetchTracks(playlist_id!, client_id!, client_secret!);
         logger.info('Loading songs into database.');
         data.loadSongs(playlist_id, tracks);
     }
     logger.info('Retrieving songs from database.');
     const tracks = data.getSongs(playlist_id ? playlist_id : DEFAULT_PLAYLIST);
     if (tracks.length == 0) {
-        logger.error('No tracks found in playlist. Rerun with playlist-id and access-token arguments.');
-        sys.exit(1);
+        logger.error('No tracks found in playlist. Rerun with playlist-id, client-id, and client-secret arguments.');
+        process.exit(1);
     }
     logger.info('Ready to start.');
 

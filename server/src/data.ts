@@ -23,7 +23,7 @@ export class TrackStore {
                     songStmt.run(
                         track.id,
                         track.preview_url,
-                        null,
+                        track.image_url,
                         track.title,
                         track.artists.map((artist) => Buffer.from(artist).toString('base64')).join(','),
                         new Date().getTime()
@@ -55,6 +55,7 @@ export class TrackStore {
                     title: row.title,
                     artists: artists,
                     preview_url: row.preview_url,
+                    image_url: row.img_url,
                 });
             }
         } catch (e) {
@@ -68,6 +69,7 @@ export class TrackStore {
 export interface Track {
     id: string;
     preview_url: string | null;
+    image_url: string | null;
     title: string;
     artists: Array<string>;
 }

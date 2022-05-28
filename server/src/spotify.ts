@@ -18,12 +18,12 @@ function removeTracksWithNullURL(tracks: TrackList): TrackList {
 }
 
 /** Recursively get all tracks from the playlist with the given ID */
-async function pullTracks(playlist_id: string, token: string, offset = 0): Promise<TrackList> {
+async function pullTracks(playlist_id: string, offset = 0): Promise<TrackList> {
     //Get raw track data
     const data = await API_INSTANCE.getPlaylistTracks(playlist_id, {
         offset: offset,
         limit: TRACK_PULL_LIMIT,
-        fields: 'items.track(id,name,preview_url,artists.name)',
+        fields: 'items.track(id,name,preview_url,album(images),artists.name)',
     });
 
     //Check if call was successful
@@ -34,12 +34,14 @@ async function pullTracks(playlist_id: string, token: string, offset = 0): Promi
 
     //Convert to track objects and add to track array
     //const items = data.body.items;
-    const songItems = data.body.items.map((item) => {
+    const songItems: TrackList = data.body.items.map((item) => {
         const track = item.track;
         const artists: string[] = track.artists.map((artist) => artist.name);
+        const img = track.album.images[0].url;
         return {
             id: track.id,
             preview_url: track.preview_url,
+            image_url: img,
             title: track.name,
             artists: artists,
         };
@@ -47,7 +49,7 @@ async function pullTracks(playlist_id: string, token: string, offset = 0): Promi
 
     //Recur if last request returned max items
     if (songItems.length == TRACK_PULL_LIMIT) {
-        const newTracks = await pullTracks(playlist_id, token, offset + TRACK_PULL_LIMIT);
+        const newTracks = await pullTracks(playlist_id, offset + TRACK_PULL_LIMIT);
         return songItems.concat(newTracks);
     }
     return songItems;
@@ -95,9 +97,21 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
 }
 
 /** Update tracks.json with the tracks from the given playlist */
-export async function fetchTracks(playlist_id: string, access_token: string): Promise<TrackList> {
-    API_INSTANCE.setAccessToken(access_token);
-    let tracks = await pullTracks(playlist_id, access_token, 0);
+export async function fetchTracks(playlist_id: string, client_id: string, client_secret: string): Promise<TrackList> {
+    API_INSTANCE.setClientId(client_id);
+    API_INSTANCE.setClientSecret(client_secret);
+    // Retrieve an access token.
+    await API_INSTANCE.clientCredentialsGrant().then(
+        function (data) {
+            // Save the access token so that it's used in future calls
+            API_INSTANCE.setAccessToken(data.body['access_token']);
+        },
+        function (err) {
+            logger.error('Something went wrong when retrieving an access token', err);
+            process.exit(1);
+        }
+    );
+    let tracks = await pullTracks(playlist_id, 0);
     tracks = await fillMissingUrls(tracks);
     tracks = removeTracksWithNullURL(tracks);
     return tracks;
