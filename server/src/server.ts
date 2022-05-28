@@ -100,18 +100,22 @@ interface Player {
     room: string;
 }
 
-class Room {
+export class Room {
     id: string;
     players: Array<Player>;
     creator: Player;
+    playlist: TrackList;
+    database: TrackStore;
     game: Game;
     timeouts: Array<NodeJS.Timeout>;
 
-    constructor(id: string, creator: Player, playlist: TrackList) {
+    constructor(id: string, creator: Player, playlist: TrackList, database: TrackStore) {
         this.id = id;
         this.creator = creator;
         this.players = [];
-        this.game = new Game(playlist);
+        this.game = new Game(this);
+        this.playlist = playlist;
+        this.database = database;
         this.timeouts = [];
     }
 
@@ -275,6 +279,7 @@ function sendMessage(player: Player, message: ServerWSMessage) {
 function handleNewConnection(
     rooms: Map<string, Room>,
     tracks: TrackList,
+    data: TrackStore,
     ws: WebSocket,
     request_url: string
 ): [Room, Player] {
@@ -291,7 +296,7 @@ function handleNewConnection(
         room = rooms.get(room_id)!;
     } else {
         logger.debug(`Room ${room_id} has been created`);
-        room = new Room(room_id, new_player, tracks);
+        room = new Room(room_id, new_player, tracks, data);
     }
     rooms.set(room_id, room);
     room.addPlayer(new_player);
@@ -383,7 +388,7 @@ async function main() {
     const rooms = new Map();
     const wss = new Server({ port: 8080 });
     wss.on('connection', (ws, request) => {
-        const [room, player] = handleNewConnection(rooms, tracks, ws, request.url!);
+        const [room, player] = handleNewConnection(rooms, tracks, data, ws, request.url!);
         ws.on('close', () => handleClosedConnection(rooms, room, player));
         ws.on('message', (data) => handleMessage(room, player, data.toString()));
     });

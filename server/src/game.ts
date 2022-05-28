@@ -1,4 +1,5 @@
 import type { Track, TrackList } from './data';
+import { Room } from './server';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 
 /** Game state */
@@ -46,25 +47,34 @@ interface Completion {
     time: number;
 }
 
+/** Store round guess information for analytics */
+export interface RoundData {
+    plays: number;
+    title: number;
+    artist: number;
+}
+
 /** A game contains rounds, which in turn contain tracks */
 export class Game {
+    room: Room;
     state: State;
     tracks_per_round: number | null;
     secs_between_tracks: number | null;
     current_track: Track | null;
     current_track_number: number;
-    playlist: TrackList;
     played_tracks: Set<Track>;
     leaderboard: Map<string, Standing>;
     completions: Array<Completion>;
+    round_data: RoundData;
 
-    constructor(playlist: TrackList) {
+    constructor(room: Room) {
+        this.room = room;
         this.state = State.LOBBY;
         this.tracks_per_round = null;
         this.secs_between_tracks = null;
         this.current_track = null;
         this.current_track_number = 0;
-        this.playlist = playlist;
+        this.round_data = { plays: 0, title: 0, artist: 0 };
         this.played_tracks = new Set();
         this.leaderboard = new Map();
         this.completions = [];
@@ -122,8 +132,10 @@ export class Game {
             return GuessResult.INCORRECT;
         } else if (progress != Progress.TITLE && isCorrectTitle(this.current_track!, guess)) {
             result = GuessResult.TITLE;
+            this.round_data.title++;
         } else if (progress != Progress.ARTIST && isCorrectArtist(this.current_track!, guess)) {
             result = GuessResult.ARTIST;
+            this.round_data.artist++;
         } else {
             return GuessResult.INCORRECT;
         }
@@ -181,13 +193,16 @@ export class Game {
             standing.place = Place.NONE;
         });
         this.completions = [];
+        this.round_data.plays = this.leaderboard.size;
+        this.room.database.updatePlays(this.current_track!.id, this.round_data);
+        this.round_data = { plays: 0, title: 0, artist: 0 };
     }
 
     /** Pick an unplayed song for the next track. */
     getRandomUnplayedTrack() {
         var track;
         do {
-            track = this.playlist[Math.floor(Math.random() * this.playlist.length)];
+            track = this.room.playlist[Math.floor(Math.random() * this.room.playlist.length)];
         } while (this.played_tracks.has(track));
         return track;
     }
