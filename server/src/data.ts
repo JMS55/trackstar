@@ -11,22 +11,23 @@ export class TrackStore {
     /** Add songs to the database for a given playlist. Updates playlist table and junction table as well. */
     loadSongs(playlist_id: string, tracks: TrackList) {
         this.db
-            .prepare('INSERT OR REPLACE INTO playlists (playlist_id, last_updated) VALUES (?, ?);')
-            .run(playlist_id, new Date().getTime());
+            .prepare('INSERT INTO playlists (playlist_id, last_updated) VALUES (?, @updated)\n'
+                        + 'ON CONFLICT(playlist_id) DO UPDATE SET last_updated = @updated;')
+            .run(playlist_id, {updated: new Date().getTime()});
         const songStmt = this.db.prepare(
-            'INSERT OR REPLACE INTO songs (song_id, preview_url, img_url, title, artists, add_time) VALUES (?,?,?,?,?,?);'
-        );
+            'INSERT INTO songs (song_id, preview_url, img_url, title, artists, add_time) VALUES (?,@prev_url,?,?,?,?)\n'
+                        + 'ON CONFLICT(song_id) DO UPDATE SET preview_url = @prev_url;');
         const contentStmt = this.db.prepare('INSERT OR IGNORE INTO contents (playlist_id, song_id) VALUES (?,?);'); //TODO: check removed
         const txn = this.db.transaction((tracks: TrackList) => {
             tracks.forEach((track) => {
                 try {
                     songStmt.run(
                         track.id,
-                        track.preview_url,
                         track.image_url,
                         track.title,
                         track.artists.map((artist) => Buffer.from(artist).toString('base64')).join(','),
-                        new Date().getTime()
+                        new Date().getTime(),
+                        {prev_url: track.preview_url}
                     );
                     contentStmt.run(playlist_id, track.id);
                 } catch (e) {
@@ -77,43 +78,62 @@ export interface Track {
 export type TrackList = readonly Track[];
 
 /** Create database and tables.
- * SONGS table: song_id, preview_url, img_url, title, artists, add_time
+ * SONGS table: song_id, preview_url, img_url, title, artists, add_time, plays, title_guessed, artist_guessed
  * PLAYLISTS table: playlist_id, last_updated
  * CONTENTS: playlist_id, song_id
  *  -- foreign keys
  */
 function open_db() {
-    const db = new sqlite3('data.db', {});
-    db.pragma('foreign_keys = ON;');
+    let db;
+    try {
+        db = new sqlite3('data.db', {fileMustExist: true});
+    } catch (_) {
+        logger.info("Creating database.");
+        db = new sqlite3('data.db', {});
+        db.pragma('foreign_keys = ON;');
+        db.prepare(
+            'CREATE TABLE IF NOT EXISTS songs (\n' +
+                '	song_id TEXT PRIMARY KEY,\n' +
+                '	preview_url TEXT,\n' +
+                ' img_url TEXT,\n' +
+                '	title TEXT NOT NULL,\n' +
+                ' artists TEXT NOT NULL,\n' +
+                ' add_time INT NOT NULL,\n' +
+                ' plays INT NOT NULL DEFAULT 0,\n' +
+                ' title_guessed INT NOT NULL DEFAULT 0,\n' +
+                ' artist_guessed INT NOT NULL DEFAULT 0\n' +
+                ');'
+        ).run();
+        db.prepare(
+            'CREATE TABLE IF NOT EXISTS playlists (\n' +
+                '	playlist_id TEXT PRIMARY KEY,\n' +
+                ' last_updated INT NOT NULL\n' +
+                ');'
+        ).run();
+        db.prepare(
+            'CREATE TABLE IF NOT EXISTS contents (\n' +
+                '	playlist_id TEXT NOT NULL,\n' +
+                ' song_id TEXT NOT NULL,\n' +
+                ' UNIQUE (playlist_id, song_id),\n' +
+                ' FOREIGN KEY (playlist_id) REFERENCES playlists (playlist_id)' +
+                '    ON UPDATE CASCADE \n' +
+                '    ON DELETE CASCADE ,\n' +
+                ' FOREIGN KEY (song_id) REFERENCES songs (song_id)' +
+                '    ON UPDATE CASCADE \n' +
+                '    ON DELETE CASCADE \n' +
+                ');'
+        ).run();
+        db.pragma('user_version = 1;');
+    }
+    
+    const ver = db.pragma('user_version', { simple: true });
+    if (ver < 1) {
+        logger.info("Migrating database to version 1 (plays tracking)");
+        db.prepare("ALTER TABLE songs ADD COLUMN plays INT NOT NULL DEFAULT 0;").run();
+        db.prepare("ALTER TABLE songs ADD COLUMN title_guessed INT NOT NULL DEFAULT 0").run();
+        db.prepare("ALTER TABLE songs ADD COLUMN artist_guessed INT NOT NULL DEFAULT 0;").run();
+        db.pragma('user_version = 1;');
+    }
 
-    db.prepare(
-        'CREATE TABLE IF NOT EXISTS songs (\n' +
-            '	song_id TEXT PRIMARY KEY,\n' +
-            '	preview_url TEXT,\n' +
-            ' img_url TEXT,\n' +
-            '	title TEXT NOT NULL,\n' +
-            ' artists TEXT NOT NULL,\n' +
-            ' add_time INT NOT NULL\n' +
-            ');'
-    ).run();
-    db.prepare(
-        'CREATE TABLE IF NOT EXISTS playlists (\n' +
-            '	playlist_id TEXT PRIMARY KEY,\n' +
-            ' last_updated INT NOT NULL\n' +
-            ');'
-    ).run();
-    db.prepare(
-        'CREATE TABLE IF NOT EXISTS contents (\n' +
-            '	playlist_id TEXT NOT NULL,\n' +
-            ' song_id TEXT NOT NULL,\n' +
-            ' UNIQUE (playlist_id, song_id),\n' +
-            ' FOREIGN KEY (playlist_id) REFERENCES playlists (playlist_id)' +
-            '    ON UPDATE CASCADE \n' +
-            '    ON DELETE CASCADE ,\n' +
-            ' FOREIGN KEY (song_id) REFERENCES songs (song_id)' +
-            '    ON UPDATE CASCADE \n' +
-            '    ON DELETE CASCADE \n' +
-            ');'
-    ).run();
     return db;
 }
