@@ -92,14 +92,11 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
                 });
                 const body = await response.text();
                 const tail = body.substring(body.indexOf('preview_url') + 20);
-                const preview_url_encoded = tail.substring(
+                const preview_url = tail.substring(
                     0,
                     tail.indexOf('%3Fcid%3D')
                 );
-                const preview_url = preview_url_encoded
-                    .replace('%3A', ':')
-                    .replace(/%2F/g, '/');
-                track.preview_url = preview_url;
+                track.preview_url = decodeURIComponent(preview_url);
             } catch (err) {
                 logger.warn(`Error fetching track preview URL: ${err}`);
             } finally {
