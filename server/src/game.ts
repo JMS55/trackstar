@@ -1,4 +1,4 @@
-import { getRandomUnplayedTrack, Track } from './tracks';
+import type { Track, TrackList } from './data';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 
 /** Game state */
@@ -6,7 +6,7 @@ export enum State {
     LOBBY,
     TRACK,
     BETWEEN_TRACKS,
-    BETWEEN_ROUNDS
+    BETWEEN_ROUNDS,
 }
 
 /** What a player has gotten correct so far */
@@ -14,7 +14,7 @@ const enum Progress {
     TITLE = 'correct_title',
     ARTIST = 'correct_artist',
     BOTH = 'both_correct',
-    NONE = 'none_correct'
+    NONE = 'none_correct',
 }
 
 /** Podium for who got both the title and artist in what order */
@@ -22,47 +22,49 @@ const enum Place {
     FIRST = 'first',
     SECOND = 'second',
     THIRD = 'third',
-    NONE = 'none'
+    NONE = 'none',
 }
 
 /** The result of attempting to validate a guess */
 export const enum GuessResult {
     TITLE = 'correct_title',
     ARTIST = 'correct_artist',
-    INCORRECT = 'incorrect'  //Includes case when player guesses something they already got right
+    INCORRECT = 'incorrect', //Includes case when player guesses something they already got right
 }
 
 /** Leaderboard info for a specific player */
 export interface Standing {
-    score: number
-    points_from_current_track: number
-    progress: Progress
-    place: Place
+    score: number;
+    points_from_current_track: number;
+    progress: Progress;
+    place: Place;
 }
 
 /** Marker for the time a player gets both title and artist */
 interface Completion {
-    player: string
-    time: number
+    player: string;
+    time: number;
 }
 
 /** A game contains rounds, which in turn contain tracks */
 export class Game {
-    state: State
-    tracks_per_round: number | null
-    secs_between_tracks: number | null
-    current_track: Track | null
-    current_track_number: number
-    played_tracks: Set<Track>
-    leaderboard: Map<string, Standing>
-    completions: Array<Completion>
+    state: State;
+    tracks_per_round: number | null;
+    secs_between_tracks: number | null;
+    current_track: Track | null;
+    current_track_number: number;
+    playlist: TrackList;
+    played_tracks: Set<Track>;
+    leaderboard: Map<string, Standing>;
+    completions: Array<Completion>;
 
-    constructor() {
+    constructor(playlist: TrackList) {
         this.state = State.LOBBY;
         this.tracks_per_round = null;
         this.secs_between_tracks = null;
         this.current_track = null;
         this.current_track_number = 0;
+        this.playlist = playlist;
         this.played_tracks = new Set();
         this.leaderboard = new Map();
         this.completions = [];
@@ -102,11 +104,11 @@ export class Game {
 
     /** Switch to and return a new track (which has not already been played) */
     nextTrack(): Track {
-        const track = getRandomUnplayedTrack(this.played_tracks);
+        const track = this.getRandomUnplayedTrack();
         this.current_track = track;
         this.current_track_number++;
         this.played_tracks.add(track);
-        return track
+        return track;
     }
 
     /** Validate a player's guess, update the leaderboard, and return the validation result */
@@ -117,10 +119,16 @@ export class Game {
         //Validate guess
         let result;
         if (progress == Progress.BOTH) {
-            return GuessResult.INCORRECT
-        } else if (progress != Progress.TITLE && isCorrectTitle(this.current_track!, guess)) {
+            return GuessResult.INCORRECT;
+        } else if (
+            progress != Progress.TITLE &&
+            isCorrectTitle(this.current_track!, guess)
+        ) {
             result = GuessResult.TITLE;
-        } else if (progress != Progress.ARTIST && isCorrectArtist(this.current_track!, guess)) {
+        } else if (
+            progress != Progress.ARTIST &&
+            isCorrectArtist(this.current_track!, guess)
+        ) {
             result = GuessResult.ARTIST;
         } else {
             return GuessResult.INCORRECT;
@@ -128,10 +136,13 @@ export class Game {
 
         //Update leaderboard
         standing.points_from_current_track++;
-        if (progress == Progress.NONE) {  //Player has either title or artist correct now
-            standing.progress = result == GuessResult.TITLE ? Progress.TITLE : Progress.ARTIST;
+        if (progress == Progress.NONE) {
+            //Player has either title or artist correct now
+            standing.progress =
+                result == GuessResult.TITLE ? Progress.TITLE : Progress.ARTIST;
             standing.points_from_current_track = 1;
-        } else {  //Player has both title and artist correct now
+        } else {
+            //Player has both title and artist correct now
             standing.progress = Progress.BOTH;
             this.addCompletion(player, time);
         }
@@ -142,7 +153,7 @@ export class Game {
     /** Update leaderboard when a player has just gotten title and artist */
     addCompletion(player: string, time: number) {
         this.completions.push({ player: player, time: time });
-        this.completions.sort((a, b) => (a.time - b.time));
+        this.completions.sort((a, b) => a.time - b.time);
         this.completions.forEach((completion, index) => {
             let place, points_from_current_track;
             switch (index) {
@@ -170,12 +181,22 @@ export class Game {
 
     /** Add points from current track to scores and reset completions */
     endTrack() {
-        this.leaderboard.forEach(standing => {
+        this.leaderboard.forEach((standing) => {
             standing.score += standing.points_from_current_track;
             standing.points_from_current_track = 0;
             standing.progress = Progress.NONE;
             standing.place = Place.NONE;
-        })
+        });
         this.completions = [];
+    }
+
+    /** Pick an unplayed song for the next track. */
+    getRandomUnplayedTrack() {
+        var track;
+        do {
+            track =
+                this.playlist[Math.floor(Math.random() * this.playlist.length)];
+        } while (this.played_tracks.has(track));
+        return track;
     }
 }

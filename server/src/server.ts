@@ -2,20 +2,28 @@ import winston, { format } from 'winston';
 import { Server, WebSocket } from 'ws';
 import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Game, State, GuessResult, Standing } from './game';
+import { TrackList, TrackStore } from './data';
+import { fetchTracks } from './spotify';
+import { sys } from 'typescript';
 
-const logger = winston.createLogger({
-    'transports': [new winston.transports.Console()],
-    'format': format.combine(
+export const logger = winston.createLogger({
+    transports: [new winston.transports.Console()],
+    format: format.combine(
         format.colorize(),
         format.timestamp(),
         format.align(),
-        format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
+        format.printf(
+            (info) => `${info.timestamp} ${info.level}: ${info.message}`
+        )
     ),
-    'level': process.env.TS_LOG_LEVEL ?? 'debug'
+    level: process.env.TS_LOG_LEVEL ?? 'debug',
 });
 
 /** We use Spotify previews, which are 30 seconds long */
 const TRACK_PLAY_LENGTH_SECS = 30;
+
+/** All games are this playlist (for now) */
+const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
 
 /** Topics for server/client messages */
 const enum Topic {
@@ -25,7 +33,7 @@ const enum Topic {
     LEADERBOARD = 'leaderboard',
     START_GAME_COMMAND = 'start_game_command',
     START_ROUND_COMMAND = 'start_round_command',
-    MAKE_GUESS_COMMAND = 'make_guess_command'
+    MAKE_GUESS_COMMAND = 'make_guess_command',
 }
 
 /////////////////////////////////////////////
@@ -35,32 +43,32 @@ type ServerWSMessage = WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoar
 
 /** Configuration of the room's game */
 interface WSGameConfig {
-    topic: Topic.GAME_CONFIG,
-    time_between_tracks: number,
-    tracks_per_round: number
+    topic: Topic.GAME_CONFIG;
+    time_between_tracks: number;
+    tracks_per_round: number;
 }
 
 /** Info for the next track to be played */
 interface WSTrackInfo {
-    topic: Topic.TRACK_INFO,
-    url: string,
-    title: string,
-    aritsts: string[],
-    track_number: number,
-    when_to_start: number
+    topic: Topic.TRACK_INFO;
+    url: string;
+    title: string;
+    aritsts: string[];
+    track_number: number;
+    when_to_start: number;
 }
 
 /** Correctness of player's guess */
 interface WSGuessResult {
-    topic: Topic.GUESS_RESULT,
-    result: GuessResult
-};
+    topic: Topic.GUESS_RESULT;
+    result: GuessResult;
+}
 
 /** Leader board of the room's game */
 interface WSLeaderBoard {
-    topic: Topic.LEADERBOARD,
-    leaderboard: Map<string, Standing>
-};
+    topic: Topic.LEADERBOARD;
+    leaderboard: Map<string, Standing>;
+}
 
 /////////////////////////////////////////////
 
@@ -68,19 +76,19 @@ interface WSLeaderBoard {
 const WSStartGame = Record({
     topic: Literal(Topic.START_GAME_COMMAND),
     tracks_per_round: Number,
-    time_between_tracks: Number
+    time_between_tracks: Number,
 });
 
 /** Command to start another round */
 const WSStartRound = Record({
-    topic: Literal(Topic.START_ROUND_COMMAND)
+    topic: Literal(Topic.START_ROUND_COMMAND),
 });
 
 /** A player making a guess */
 const WSMakeGuess = Record({
     topic: Literal(Topic.MAKE_GUESS_COMMAND),
     guess: String,
-    time_of_guess: Number
+    time_of_guess: Number,
 });
 
 /** All Client -> Server messages */
@@ -89,35 +97,29 @@ const ClientWSMessage = Union(WSStartGame, WSStartRound, WSMakeGuess);
 /////////////////////////////////////////////
 
 interface Player {
-    client: WebSocket,
-    name: string
+    client: WebSocket;
+    name: string;
+    room: string;
 }
 
 class Room {
-    id: string
-    players: Array<Player>
-    creator: Player
-    game: Game
-    timeouts: Array<NodeJS.Timeout>
+    id: string;
+    players: Array<Player>;
+    creator: Player;
+    game: Game;
+    timeouts: Array<NodeJS.Timeout>;
 
-    constructor(id: string, creator: Player) {
+    constructor(id: string, creator: Player, playlist: TrackList) {
         this.id = id;
         this.creator = creator;
         this.players = [];
-        this.game = new Game();
+        this.game = new Game(playlist);
         this.timeouts = [];
     }
 
     /** Send a message to all players */
     sendAll(message: ServerWSMessage) {
-        this.players.forEach(player => this.sendOne(player, message));
-    }
-
-    /** Send a message to a single player */
-    sendOne(player: Player, message: ServerWSMessage) {
-        const message_json: string = JSON.stringify(message, (_key, value) => value instanceof Map ? Object.fromEntries(value) : value)
-        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n${prettyJson(message_json)}`);
-        player.client.send(message_json);
+        this.players.forEach((player) => sendMessage(player, message));
     }
 
     addPlayer(player: Player) {
@@ -125,10 +127,10 @@ class Room {
         this.game.addPlayer(player.name);
         this.sendLeaderboard();
         if (this.game.state != State.LOBBY) {
-            this.sendOne(player, {
+            sendMessage(player, {
                 topic: Topic.GAME_CONFIG,
                 time_between_tracks: this.game.secs_between_tracks!,
-                tracks_per_round: this.game.tracks_per_round!
+                tracks_per_round: this.game.tracks_per_round!,
             });
         }
     }
@@ -149,7 +151,7 @@ class Room {
         this.sendAll({
             topic: Topic.GAME_CONFIG,
             time_between_tracks: time_between_tracks,
-            tracks_per_round: tracks_per_round
+            tracks_per_round: tracks_per_round,
         });
     }
 
@@ -165,7 +167,10 @@ class Room {
      */
     startRound() {
         //Round should only start from lobby or between rounds
-        if (this.game.state != State.LOBBY && this.game.state != State.BETWEEN_ROUNDS) {
+        if (
+            this.game.state != State.LOBBY &&
+            this.game.state != State.BETWEEN_ROUNDS
+        ) {
             return;
         }
 
@@ -182,7 +187,7 @@ class Room {
 
     /** Clear every timeout that has ever been started for this room */
     clearTimeouts() {
-        this.timeouts.forEach(timeout => clearTimeout(timeout));
+        this.timeouts.forEach((timeout) => clearTimeout(timeout));
     }
 
     /** Select a track to play (called halfway through the wait period) */
@@ -195,30 +200,45 @@ class Room {
             title: track.title,
             aritsts: track.artists,
             track_number: this.game.current_track_number,
-            when_to_start: Date.now() + (this.game.secs_between_tracks! / 2) * 1000  //now + wait/2
+            when_to_start:
+                Date.now() + (this.game.secs_between_tracks! / 2) * 1000, //now + wait/2
         });
 
         //Set game state to TRACK once the track starts playing
-        this.addTimeout(this.game.secs_between_tracks! / 2, //now + wait/2
-            () => this.setGameState(State.TRACK));
+        this.addTimeout(
+            this.game.secs_between_tracks! / 2, //now + wait/2
+            () => this.setGameState(State.TRACK)
+        );
 
         //Set game state to BETWEEN_TRACKS once the track ends
-        this.addTimeout(this.game.secs_between_tracks! / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track
-            () => this.setGameState(State.BETWEEN_TRACKS));
+        this.addTimeout(
+            this.game.secs_between_tracks! / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track
+            () => this.setGameState(State.BETWEEN_TRACKS)
+        );
 
         //Update the leaderboard once the next track and subsequent wait period end
-        this.addTimeout(this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
-            () => { this.game.endTrack(); this.sendLeaderboard() });
+        this.addTimeout(
+            (this.game.secs_between_tracks! * 3) / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
+            () => {
+                this.game.endTrack();
+                this.sendLeaderboard();
+            }
+        );
 
         //If round is not over, select another track halfway through the next wait period
         if (this.game.current_track_number < this.game.tracks_per_round!) {
-            this.addTimeout(this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait/2
-                () => this.selectTrack());
+            this.addTimeout(
+                this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait/2
+                () => this.selectTrack()
+            );
         }
         //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
         else {
-            this.addTimeout(this.game.secs_between_tracks! * 3 / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
-                () => this.setGameState(State.BETWEEN_ROUNDS));
+            this.addTimeout(
+                (this.game.secs_between_tracks! * 3) / 2 +
+                    TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
+                () => this.setGameState(State.BETWEEN_ROUNDS)
+            );
         }
     }
 
@@ -229,8 +249,12 @@ class Room {
             return;
         }
 
-        const result = this.game.processGuess(player.name, guess, guess_epoch_millis);
-        this.sendOne(player, {
+        const result = this.game.processGuess(
+            player.name,
+            guess,
+            guess_epoch_millis
+        );
+        sendMessage(player, {
             topic: Topic.GUESS_RESULT,
             result: result,
         });
@@ -243,25 +267,44 @@ class Room {
     sendLeaderboard() {
         this.sendAll({
             topic: Topic.LEADERBOARD,
-            leaderboard: this.game.leaderboard
+            leaderboard: this.game.leaderboard,
         });
     }
 }
 
+/** Send a message to a single player */
+function sendMessage(player: Player, message: ServerWSMessage) {
+    const message_json: string = JSON.stringify(message, (_key, value) =>
+        value instanceof Map ? Object.fromEntries(value) : value
+    );
+    logger.debug(
+        `Message sent to player ${player.name} in room ${
+            player.room
+        }...\n${prettyJson(message_json)}`
+    );
+    player.client.send(message_json);
+}
+
 /** When client connects: create player, add player to room (create room first if it does not exist) */
-function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player] {
+function handleNewConnection(
+    rooms: Map<string, Room>,
+    tracks: TrackList,
+    ws: WebSocket,
+    request_url: string
+): [Room, Player] {
     logger.debug(`Client connected with URL... ${request_url}`);
     const [room_id, player_name] = request_url.slice(1).split('/');
     const new_player: Player = {
         client: ws,
-        name: player_name
-    }
+        name: player_name,
+        room: room_id,
+    };
     let room: Room;
     if (rooms.has(room_id)) {
-        room = rooms.get(room_id);
+        room = rooms.get(room_id)!;
     } else {
         logger.debug(`Room ${room_id} has been created`);
-        room = new Room(room_id, new_player);
+        room = new Room(room_id, new_player, tracks);
     }
     rooms.set(room_id, room);
     room.addPlayer(new_player);
@@ -269,7 +312,11 @@ function handleNewConnection(ws: WebSocket, request_url: string): [Room, Player]
 }
 
 /** When client disconnects: delete player, delete room if empty */
-function handleClosedConnection(room: Room, player: Player) {
+function handleClosedConnection(
+    rooms: Map<string, Room>,
+    room: Room,
+    player: Player
+) {
     logger.debug(`Player ${player.name} has left room ${room.id}`);
     room.deletePlayer(player);
     if (room.players.length == 0) {
@@ -286,22 +333,35 @@ function handleMessage(room: Room, player: Player, message_json: string) {
     try {
         message = JSON.parse(message_json);
     } catch (e) {
-        logger.error(`Message received from player ${player.name} for room ${room.id} is not valid JSON...\n${message_json}`);
+        logger.error(
+            `Message received from player ${player.name} for room ${room.id} is not valid JSON...\n${message_json}`
+        );
         return;
     }
 
     //Ensure message matches one of our defined formats
     if (!ClientWSMessage.guard(message)) {
-        logger.error(`Message received from player ${player.name} for room ${room.id} is not in an accepted format...\n${prettyJson(message_json)}`);
+        logger.error(
+            `Message received from player ${player.name} for room ${
+                room.id
+            } is not in an accepted format...\n${prettyJson(message_json)}`
+        );
         return;
     }
 
-    logger.debug(`Message received from player ${player.name} for room ${room.id}...\n${prettyJson(message_json)}`);
+    logger.debug(
+        `Message received from player ${player.name} for room ${
+            room.id
+        }...\n${prettyJson(message_json)}`
+    );
 
     //Process message
     switch (message.topic) {
         case Topic.START_GAME_COMMAND:
-            room.setGameConfig(message.tracks_per_round, message.time_between_tracks);  //Missing break is intentional
+            room.setGameConfig(
+                message.tracks_per_round,
+                message.time_between_tracks
+            ); //Missing break is intentional
         case Topic.START_ROUND_COMMAND:
             room.startRound();
             break;
@@ -316,12 +376,46 @@ function prettyJson(input: string) {
     return JSON.stringify(JSON.parse(input), null, 2);
 }
 
-//Start server
-const rooms = new Map();
-const wss = new Server({ port: 8080 })
-wss.on("connection", (ws, request) => {
-    const [room, player] = handleNewConnection(ws, request.url!);
-    ws.on('close', () => handleClosedConnection(room, player));
-    ws.on('message', data => handleMessage(room, player, data.toString()));
-});
-logger.info('TrackStar server started!');
+async function main() {
+    //Open database, fetch songs
+    const data = new TrackStore();
+
+    const args = process.argv.slice(2);
+    let playlist_id;
+    if (args.length == 2) {
+        const [playlist_arg, access_token] = args;
+        playlist_id = playlist_arg;
+        logger.info('Pulling tracks from spotify.');
+        const tracks = await fetchTracks(playlist_id!, access_token!);
+        logger.info('Loading songs into database.');
+        data.loadSongs(playlist_id, tracks);
+    }
+    logger.info('Retrieving songs from database.');
+    const tracks = data.getSongs(playlist_id ? playlist_id : DEFAULT_PLAYLIST);
+    if (tracks.length == 0) {
+        logger.error(
+            'No tracks found in playlist. Rerun with playlist-id and access-token arguments.'
+        );
+        sys.exit(1);
+    }
+    logger.info('Ready to start.');
+
+    //Start server
+    const rooms = new Map();
+    const wss = new Server({ port: 8080 });
+    wss.on('connection', (ws, request) => {
+        const [room, player] = handleNewConnection(
+            rooms,
+            tracks,
+            ws,
+            request.url!
+        );
+        ws.on('close', () => handleClosedConnection(rooms, room, player));
+        ws.on('message', (data) =>
+            handleMessage(room, player, data.toString())
+        );
+    });
+    logger.info('TrackStar server started!');
+}
+
+void main();
