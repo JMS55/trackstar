@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'widgets.dart';
 import 'trackstar_service.dart';
 import 'game_page.dart';
