@@ -108,8 +108,7 @@ class _GamePageState extends State<GamePage> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
-                  // TODO: Non-hardcoded image
-                  'https://i.scdn.co/image/ab67616d00001e021d13a9948aab982fabdf5209',
+                  widget.trackStarService.albumCoverUrl,
                   width: 120,
                   height: 120,
                 ),

@@ -29,6 +29,7 @@ class TrackStarService {
 
   String trackTitle = "";
   List<String> trackArtists = [];
+  String albumCoverUrl = "";
 
   TrackStarService({
     int? roomId,
@@ -97,6 +98,7 @@ class TrackStarService {
     trackStartTime = msg.whenToStart;
     trackTitle = msg.title;
     trackArtists = msg.aritsts;
+    albumCoverUrl = msg.albumCoverUrl;
 
     Duration delayUntilTrackStart =
         DateTime.fromMillisecondsSinceEpoch(trackStartTime, isUtc: true)
@@ -205,11 +207,12 @@ class TrackInfoMessage {
   final String url;
   final String title;
   final List<String> aritsts;
+  final String albumCoverUrl;
   final int trackNumber;
   final int whenToStart;
 
-  TrackInfoMessage(
-      this.url, this.title, this.aritsts, this.trackNumber, this.whenToStart);
+  TrackInfoMessage(this.url, this.title, this.aritsts, this.albumCoverUrl,
+      this.trackNumber, this.whenToStart);
   factory TrackInfoMessage.fromJson(Map<String, dynamic> json) =>
       _$TrackInfoMessageFromJson(json);
   Map<String, dynamic> toJson() => _$TrackInfoMessageToJson(this);
