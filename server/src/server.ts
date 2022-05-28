@@ -49,6 +49,7 @@ interface WSGameConfig {
 interface WSTrackInfo {
     topic: Topic.TRACK_INFO;
     url: string;
+    album_cover_url: string;
     title: string;
     aritsts: string[];
     track_number: number;
@@ -191,6 +192,7 @@ class Room {
         this.sendAll({
             topic: Topic.TRACK_INFO,
             url: track.preview_url!,
+            album_cover_url: track.image_url,
             title: track.title,
             aritsts: track.artists,
             track_number: this.game.current_track_number,
@@ -356,11 +358,11 @@ async function main() {
 
     const args = process.argv.slice(2);
     let playlist_id;
-    if (args.length == 3) {
-        const [playlist_arg, client_id, client_secret] = args;
+    if (args.length == 2) {
+        const [playlist_arg, access_token] = args;
         playlist_id = playlist_arg;
         logger.info('Pulling tracks from spotify.');
-        const tracks = await fetchTracks(playlist_id!, client_id!, client_secret!);
+        const tracks = await fetchTracks(playlist_id, access_token!);
         logger.info('Loading songs into database.');
         data.loadSongs(playlist_id, tracks);
     }

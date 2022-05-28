@@ -69,7 +69,7 @@ export class TrackStore {
 export interface Track {
     id: string;
     preview_url: string | null;
-    image_url: string | null;
+    image_url: string;
     title: string;
     artists: Array<string>;
 }

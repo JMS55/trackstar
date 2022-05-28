@@ -96,20 +96,8 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
 }
 
 /** Update tracks.json with the tracks from the given playlist */
-export async function fetchTracks(playlist_id: string, client_id: string, client_secret: string): Promise<TrackList> {
-    API_INSTANCE.setClientId(client_id);
-    API_INSTANCE.setClientSecret(client_secret);
-    // Retrieve an access token.
-    await API_INSTANCE.clientCredentialsGrant().then(
-        function (data) {
-            // Save the access token so that it's used in future calls
-            API_INSTANCE.setAccessToken(data.body['access_token']);
-        },
-        function (err) {
-            logger.error('Something went wrong when retrieving an access token', err);
-            process.exit(1);
-        }
-    );
+export async function fetchTracks(playlist_id: string, access_token: string): Promise<TrackList> {
+    API_INSTANCE.setAccessToken(access_token);
     let tracks = await pullTracks(playlist_id, 0);
     tracks = await fillMissingUrls(tracks);
     tracks = removeTracksWithNullURL(tracks);
