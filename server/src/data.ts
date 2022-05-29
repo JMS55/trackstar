@@ -15,7 +15,7 @@ const SONG_INSERT = `
 INSERT INTO songs (song_id, preview_url, img_url, title, artists, add_time) 
     VALUES (?,@prev_url,@img_url,?,?,?)
 ON CONFLICT(song_id) DO UPDATE 
-    SET preview_url = @prev_url, img_url = @img_url;`;
+    SET preview_url = COALESCE(@prev_url, preview_url), img_url = COALESCE(@img_url, img_url);`;
 
 const CONTENTS_INSERT = `
 INSERT OR IGNORE INTO contents (playlist_id, song_id) VALUES (?,?);`;
