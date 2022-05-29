@@ -11,7 +11,6 @@ const WEB_SCRAPE_TIMEOUT = 500;
 
 const API_INSTANCE = new Spotify();
 
-
 /** Recursively get all tracks from the playlist with the given ID */
 async function pullTracks(playlist_id: string, offset = 0): Promise<TrackList> {
     //Get raw track data
