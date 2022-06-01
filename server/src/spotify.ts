@@ -1,6 +1,7 @@
 import Spotify from 'spotify-web-api-node';
 import { logger } from './server';
-import { TrackList } from './data';
+import { TrackList, TrackStore } from './data';
+import Express from 'express';
 
 /** Max tracks Spotify will let us read from a playlist */
 const TRACK_PULL_LIMIT = 100;
@@ -85,6 +86,79 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
         })
     );
     return await trackProm;
+}
+
+export function auth() {
+    //Open database and get configs
+    const data = new TrackStore();
+
+    const config = data.getConfig();
+    const scopes = ['playlist-read-private'],
+    redirectUri = config.auth_callback_addr,
+    clientId = config.spotify.clientId,
+    clientSecret = config.spotify.clientSecret,
+    state = Math.random().toString(36).slice(2);
+    if (!config.auth_callback_addr || !config.auth_callback_port) {
+        logger.error('Spotify auth failed: no redirect URI. Load properties into DB');
+        return;
+    }
+    if (!clientId || !clientSecret) {
+        logger.error('Spotify auth failed: no client ID or secret. Load properties into DB');
+        return;
+    }
+
+    // create callback web server and listen for response
+    const spotifyApi = new Spotify({
+        redirectUri: redirectUri,
+        clientId: clientId,
+        clientSecret: clientSecret,
+    });
+
+    const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
+    console.log("\n\n***********************************\n*** AUTH INSTRUCTIONS\n***\n***")
+    console.log('*** 1. GO TO:')
+    console.log(`***\n*** https://developer.spotify.com/dashboard/applications/${clientId}`);
+    console.log(`***\n***\n*** 2. ADD THIS LINK AS A REDIRECT URI:`);
+    console.log(`***\n*** ${redirectUri}`)
+    console.log("***\n***\n*** 3. AUTHORIZE THE APP VIA THIS LINK:");
+    console.log(`***\n*** ${authorizeURL}`);
+    console.log("***\n***********************************");
+    var app = Express();
+    app.get('/callback', async function(req, res) {
+        const ret_state = req.query.state;
+        const code = req.query.code;
+        const error = req.query.error;
+        if (ret_state != state) {
+            logger.error("Returned state does not match.");
+            process.exit(1);  
+        }
+        if (error) {
+            logger.error(`Error from spotify: ${error}`);
+            process.exit(1);
+        }
+
+        let api_res = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${Buffer.from(clientId + ':' + clientSecret).toString('base64')}`
+            },
+            body:`grant_type=authorization_code&code=${code}&redirect_uri=${redirectUri}`
+        }).then(function(response) {
+            return response.json();
+        }).catch(function(err) {
+            logger.error(`Error getting access token: ${err}`);
+            process.exit(1);
+        });
+        //TODO: Set DB fields
+        console.log('The token expires in ' + api_res['expires_in']);
+        console.log('The access token is ' + api_res['access_token']);
+        console.log('The refresh token is ' + api_res['refresh_token']);
+        res.send("Success! You can close this window.");
+        process.exit(0);
+    
+    });
+    app.listen(config.auth_callback_port);
 }
 
 /** Update tracks.json with the tracks from the given playlist */

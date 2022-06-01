@@ -1,6 +1,6 @@
 import sqlite3, { Database } from 'better-sqlite3';
 import { RoundData } from './game';
-import { logger } from './server';
+import { Config, logger } from './server';
 
 // SQL statements
 /////////////
@@ -134,6 +134,11 @@ export class TrackStore {
         }
         logger.info(`Loaded ${songs.length} songs from playlist ${playlist_id}`);
         return songs;
+    }
+
+    // TODO: IMPLEMENT
+    getConfig(): Config {
+        return null as unknown as Config;
     }
 }
 
