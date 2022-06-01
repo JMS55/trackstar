@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/svg.dart';
 
 class LogoWidget extends StatelessWidget {
   const LogoWidget({Key? key}) : super(key: key);
@@ -13,9 +14,10 @@ class LogoWidget extends StatelessWidget {
         style: TextStyle(fontSize: 64, fontFamily: 'Lobster'),
       ),
       const SizedBox(height: 12),
-      Image.asset(
-        'assets/icon.png',
+      SvgPicture.asset(
+        'assets/icon.svg',
         width: 132,
+        color: Theme.of(context).colorScheme.onBackground,
       ),
     ]);
   }

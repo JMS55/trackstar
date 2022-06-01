@@ -1,3 +1,4 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 
@@ -10,13 +11,27 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TrackStar',
-      home: const HomePage(),
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color.fromARGB(255, 102, 80, 164),
-      ),
+    return DynamicColorBuilder(
+      builder: ((ColorScheme? lightColorScheme, ColorScheme? darkColorScheme) {
+        return MaterialApp(
+          title: 'TrackStar',
+          home: const HomePage(),
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: lightColorScheme ??
+                ColorScheme.fromSeed(
+                  seedColor: const Color.fromARGB(255, 102, 80, 164),
+                ),
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: darkColorScheme ??
+                ColorScheme.fromSeed(
+                  seedColor: const Color.fromARGB(255, 102, 80, 164),
+                ),
+          ),
+        );
+      }),
     );
   }
 }
