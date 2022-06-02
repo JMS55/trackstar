@@ -50,9 +50,8 @@ class TrackStarService {
     });
 
     ws = WebSocketChannel.connect(Uri(
-      scheme: 'ws',
-      host: '104.248.230.123',
-      port: 8080,
+      scheme: 'wss',
+      host: 'trackstar.ml',
       pathSegments: [this.roomId.toString(), userName],
     ));
 
