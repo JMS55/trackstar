@@ -268,7 +268,8 @@ class Standing implements Comparable<Standing> {
     } else if (progress != other.progress) {
       return Enum.compareByIndex(place, other.progress);
     } else {
-      return other.score - score;
+      return (other.score + other.pointsFromCurrentTrack) -
+          (score + pointsFromCurrentTrack);
     }
   }
 }
