@@ -1,6 +1,6 @@
 import sqlite3, { Database } from 'better-sqlite3';
 import { RoundData } from './game';
-import { Config, logger } from './server';
+import { logger } from './server';
 
 // SQL statements
 /////////////
@@ -57,6 +57,17 @@ FOREIGN KEY (playlist_id) REFERENCES playlists (playlist_id)
 FOREIGN KEY (song_id) REFERENCES songs (song_id)
     ON UPDATE CASCADE
     ON DELETE CASCADE);`;
+
+const CONFIG_CREATE = `
+CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT);`;
+
+const GET_CONFIG = `
+SELECT value FROM config WHERE key = ?;`;
+
+const SET_CONFIG = `
+INSERT OR REPLACE INTO config (key, value) VALUES (?,?);`;
 
 const V1_ALTERS = [
     `ALTER TABLE songs 
@@ -136,9 +147,75 @@ export class TrackStore {
         return songs;
     }
 
-    // TODO: IMPLEMENT
     getConfig(): Config {
-        return null as unknown as Config;
+        let config: Config = {
+            ws_port: configify(enforceNum(this.getConfigValue('ws_port')), 8080),
+            auth_callback_addr: configify(this.getConfigValue('auth_callback_addr'), 'http://localhost:8081/'),
+            auth_callback_port: configify(enforceNum(this.getConfigValue('auth_callback_port')), 8081),
+            spotify: {
+                accessToken: configify(this.getConfigValue('spotify.accessToken')),
+                clientId: configify(this.getConfigValue('spotify.clientId')),
+                clientSecret: configify(this.getConfigValue('spotify.clientSecret')),
+                refreshToken: configify(this.getConfigValue('spotify.refreshToken')),
+            }
+        };
+        logger.info(`Loaded config`);
+        return config;
+    }
+
+    getConfigValue(key: string): string | null {
+        const stmt = this.db.prepare(GET_CONFIG);
+        let value: string | null = null;
+        try {
+            value = stmt.get(key)?.value;
+        } catch (e) {
+            logger.error(`Error while getting config value ${key}: ${e}`);
+        }
+        return value as string | null;
+    }
+
+    setConfig(key: string, val: string) {
+        const stmt = this.db.prepare(SET_CONFIG);
+        try {
+            stmt.run(key, val);
+        } catch (e) {
+            logger.error(`Error while setting config value ${key}: ${e}`);
+        }
+    }
+}
+
+export interface Config {
+    ws_port: ConfigValue<number>;
+    auth_callback_addr:  ConfigValue<string>; // INCLUDES PORT!!
+    auth_callback_port:  ConfigValue<number>;
+    spotify: {
+        accessToken:  ConfigValue<string | null>;
+        clientId:  ConfigValue<string | null>;
+        clientSecret:  ConfigValue<string | null>;
+        refreshToken:  ConfigValue<string | null>;
+    }
+} 
+
+export type ConfigValue<T> = {val: T, default?: true};
+
+function enforceNum(val: string | null): number | null {
+    if (!val) {return null;}
+    const num = parseFloat(val);
+    return (isNaN(num)) ? null : num;
+}
+
+function configify<T>(val: T | null): ConfigValue<T | null>;
+function configify<T>(val: T | null, def: T): ConfigValue<T>;
+function configify<T>(val: T | null, def?: T): ConfigValue<T> | ConfigValue<T | null> {
+    if (!val && def) {
+        return {
+            val: def,
+            default: true
+        }  
+    } else {
+        return {
+            val: val
+        }
     }
 }
 
@@ -156,6 +233,7 @@ export type TrackList = readonly Track[];
  * SONGS table: song_id, preview_url, img_url, title, artists, add_time, plays, title_guessed, artist_guessed
  * PLAYLISTS table: playlist_id, last_updated
  * CONTENTS: playlist_id, song_id
+ * CONFIG: key, value
  *  -- foreign keys
  */
 function open_db() {
@@ -166,17 +244,23 @@ function open_db() {
         logger.info('Creating database.');
         db = new sqlite3('data.db', {});
         db.pragma('foreign_keys = ON;');
-        db.prepare(SONGS_CREATE).run();
-        db.prepare(PLAYLIST_CREATE).run();
-        db.prepare(CONTENTS_CREATE).run();
+        db.exec(SONGS_CREATE);
+        db.exec(PLAYLIST_CREATE);
+        db.exec(CONTENTS_CREATE);
+        db.exec(CONFIG_CREATE);
         db.pragma('user_version = 1;');
     }
 
     const ver = db.pragma('user_version', { simple: true });
     if (ver < 1) {
         logger.info('Migrating database to version 1 (plays tracking)');
-        V1_ALTERS.forEach((alter) => db.prepare(alter).run());
+        V1_ALTERS.forEach((alter) => db.exec(alter));
         db.pragma('user_version = 1;');
+    }
+    if (ver < 2) {
+        logger.info('Migrating database to version 2 (config)');
+        db.exec(CONFIG_CREATE);
+        db.pragma('user_version = 2;');
     }
 
     return db;

@@ -22,19 +22,6 @@ const TRACK_PLAY_LENGTH_SECS = 30;
 /** All games use this playlist (for now) */
 const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
 
-export interface Config {
-    ws_port: number;
-    auth_callback_addr: string; // INCLUDES PORT!!
-    auth_callback_port: number;
-    spotify: {
-        accessToken?: string;
-        clientId?: string;
-        clientSecret?: string;
-        refreshToken?: string;
-    }
-
-} 
-
 /** Topics for server/client messages */
 const enum Topic {
     GAME_CONFIG = 'game_config',

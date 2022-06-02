@@ -88,19 +88,22 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
     return await trackProm;
 }
 
-export function auth() {
+export function auth(client_id_param?: string, client_secret_param?: string) {
     //Open database and get configs
     const data = new TrackStore();
-
+    if (client_id_param && client_secret_param) {
+        data.setConfig('spotify.clientId', client_id_param);
+        data.setConfig('spotify.clientSecret', client_secret_param);
+    }
     const config = data.getConfig();
     const scopes = ['playlist-read-private'],
-    redirectUri = config.auth_callback_addr,
-    clientId = config.spotify.clientId,
-    clientSecret = config.spotify.clientSecret,
+    redirectUri = config.auth_callback_addr.val,
+    clientId = config.spotify.clientId.val,
+    clientSecret = config.spotify.clientSecret.val,
     state = Math.random().toString(36).slice(2);
-    if (!config.auth_callback_addr || !config.auth_callback_port) {
-        logger.error('Spotify auth failed: no redirect URI. Load properties into DB');
-        return;
+    
+    if (config.auth_callback_addr.default) {
+        logger.warn(`No redirect URI in DB. Using default of ${redirectUri}`);
     }
     if (!clientId || !clientSecret) {
         logger.error('Spotify auth failed: no client ID or secret. Load properties into DB');
@@ -151,14 +154,14 @@ export function auth() {
             process.exit(1);
         });
         //TODO: Set DB fields
-        console.log('The token expires in ' + api_res['expires_in']);
-        console.log('The access token is ' + api_res['access_token']);
-        console.log('The refresh token is ' + api_res['refresh_token']);
+        data.setConfig('spotify.accessToken', api_res.access_token);
+        data.setConfig('spotify.refreshToken', api_res.refresh_token);
         res.send("Success! You can close this window.");
+        console.log("Done.");
         process.exit(0);
     
     });
-    app.listen(config.auth_callback_port);
+    app.listen(config.auth_callback_port.val);
 }
 
 /** Update tracks.json with the tracks from the given playlist */
