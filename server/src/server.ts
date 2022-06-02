@@ -19,8 +19,8 @@ export const logger = winston.createLogger({
 /** We use Spotify previews, which are 30 seconds long */
 const TRACK_PLAY_LENGTH_SECS = 30;
 
-/** All games use this playlist (for now) */
-const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
+/** All games are this playlist (for now) */
+export const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
 
 /** Topics for server/client messages */
 const enum Topic {
@@ -371,20 +371,19 @@ async function main() {
     const data = new TrackStore();
 
     const args = process.argv.slice(2);
-    let playlist_id;
-    if (args.length == 2) {
-        const [playlist_arg, access_token] = args;
-        playlist_id = playlist_arg;
-        logger.info('Pulling tracks from Spotify.');
-        const tracks = await fetchTracks(playlist_id, access_token!);
-        logger.info('Loading songs into database.');
-        data.loadSongs(playlist_id, tracks);
+    let playlist_id = DEFAULT_PLAYLIST;
+    if (args.length >= 1) {
+        playlist_id = args[0];
     }
     logger.info('Retrieving songs from database.');
-    const tracks = removeTracksWithNullURL(data.getSongs(playlist_id ? playlist_id : DEFAULT_PLAYLIST));
+    const tracks = removeTracksWithNullURL(data.getSongs(playlist_id));
     if (tracks.length == 0) {
-        logger.error('No tracks found in playlist. Rerun with playlist-id and access-token arguments.');
-        process.exit(1);
+        logger.warn('No tracks found in playlist. Will try to pull from spotify');
+        const tracks = await fetchTracks(playlist_id, data.getConfig().spotify);
+        logger.info('Loading songs into database.');
+        data.loadSongs(playlist_id, tracks[0]);
+        if (tracks[1]) data.setConfig('spotify.accessToken', tracks[1]);
+        if (tracks[2]) data.setConfig('spotify.refreshToken', tracks[2]);
     }
     logger.info('Ready to start.');
 

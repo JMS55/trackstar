@@ -1,6 +1,6 @@
 import Spotify from 'spotify-web-api-node';
 import { logger } from './server';
-import { TrackList, TrackStore } from './data';
+import { SpotifyConfig, TrackList, TrackStore } from './data';
 import Express from 'express';
 
 /** Max tracks Spotify will let us read from a playlist */
@@ -97,7 +97,7 @@ export function auth(client_id_param?: string, client_secret_param?: string) {
     }
     const config = data.getConfig();
     const scopes = ['playlist-read-private'],
-    redirectUri = config.auth_callback_addr.val,
+    redirectUri = config.auth_callback_addr.val + 'callback',
     clientId = config.spotify.clientId.val,
     clientSecret = config.spotify.clientSecret.val,
     state = Math.random().toString(36).slice(2);
@@ -165,9 +165,22 @@ export function auth(client_id_param?: string, client_secret_param?: string) {
 }
 
 /** Update tracks.json with the tracks from the given playlist */
-export async function fetchTracks(playlist_id: string, access_token: string): Promise<TrackList> {
-    API_INSTANCE.setAccessToken(access_token);
+export async function fetchTracks(playlist_id: string, config: SpotifyConfig): Promise<[TrackList, string?, string?]> {
+    if (!config.accessToken.val || !config.refreshToken.val || !config.clientId.val || !config.clientSecret.val) { 
+        throw new Error("Need to authenticate. run `npm run auth`");
+    }
+    API_INSTANCE.setClientId(config.clientId.val!);
+    API_INSTANCE.setClientSecret(config.clientSecret.val!);
+    API_INSTANCE.setAccessToken(config.accessToken.val!);
+    API_INSTANCE.setRefreshToken(config.refreshToken.val!);
+    const resp = await API_INSTANCE.refreshAccessToken();
+    //Check if call was successful
+    if (resp.statusCode != 200) {
+        logger.warn(`Error response from Spotify: ${resp.body}`);
+        return [[]];
+    }
+
     let tracks = await pullTracks(playlist_id, 0);
     tracks = await fillMissingUrls(tracks);
-    return tracks;
+    return [tracks, resp.body.access_token, resp.body.refresh_token];
 }

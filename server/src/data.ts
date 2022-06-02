@@ -150,8 +150,8 @@ export class TrackStore {
     getConfig(): Config {
         let config: Config = {
             ws_port: configify(enforceNum(this.getConfigValue('ws_port')), 8080),
-            auth_callback_addr: configify(this.getConfigValue('auth_callback_addr'), 'http://localhost:8081/'),
-            auth_callback_port: configify(enforceNum(this.getConfigValue('auth_callback_port')), 8081),
+            auth_callback_addr: configify(this.getConfigValue('auth_callback_addr'), 'http://localhost:8080/'),
+            auth_callback_port: configify(enforceNum(this.getConfigValue('auth_callback_port')), 8080),
             spotify: {
                 accessToken: configify(this.getConfigValue('spotify.accessToken')),
                 clientId: configify(this.getConfigValue('spotify.clientId')),
@@ -188,13 +188,15 @@ export interface Config {
     ws_port: ConfigValue<number>;
     auth_callback_addr:  ConfigValue<string>; // INCLUDES PORT!!
     auth_callback_port:  ConfigValue<number>;
-    spotify: {
-        accessToken:  ConfigValue<string | null>;
-        clientId:  ConfigValue<string | null>;
-        clientSecret:  ConfigValue<string | null>;
-        refreshToken:  ConfigValue<string | null>;
-    }
+    spotify: SpotifyConfig;
 } 
+
+export interface SpotifyConfig {
+    accessToken:  ConfigValue<string | null>;
+    clientId:  ConfigValue<string | null>;
+    clientSecret:  ConfigValue<string | null>;
+    refreshToken:  ConfigValue<string | null>;
+}
 
 export type ConfigValue<T> = {val: T, default?: true};
 
