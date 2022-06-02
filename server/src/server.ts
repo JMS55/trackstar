@@ -19,7 +19,7 @@ export const logger = winston.createLogger({
 /** We use Spotify previews, which are 30 seconds long */
 const TRACK_PLAY_LENGTH_SECS = 30;
 
-/** All games are this playlist (for now) */
+/** All games use this playlist (for now) */
 const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
 
 /** Topics for server/client messages */
@@ -124,9 +124,18 @@ export class Room {
         this.players.forEach((player) => sendMessage(player, message));
     }
 
+    /** Send the current leaderboard to all players */
+    sendLeaderboard() {
+        this.sendAll({
+            topic: Topic.LEADERBOARD,
+            leaderboard: this.game.getActiveLeaderboard(),
+        });
+    }
+
+    /** Add player (back) to room, restoring previous standing if previously disconnected */
     addPlayer(player: Player) {
         this.players.push(player);
-        this.game.addPlayer(player.name);
+        this.game.enterPlayer(player.name);
         this.sendLeaderboard();
         if (this.game.state != State.LOBBY) {
             sendMessage(player, {
@@ -137,9 +146,10 @@ export class Room {
         }
     }
 
+    /** Delete player from room and label them "inactive" on the leaderboard */
     deletePlayer(player: Player) {
         this.players = this.players.filter((p) => p != player);
-        this.game.deletePlayer(player.name);
+        this.game.deactivatePlayer(player.name);
         this.sendLeaderboard();
     }
 
@@ -187,6 +197,23 @@ export class Room {
     /** Clear every timeout that has ever been started for this room */
     clearTimeouts() {
         this.timeouts.forEach((timeout) => clearTimeout(timeout));
+    }
+
+    /** Notify guesser of their correctness and update leaderboard if correct */
+    processGuess(player: Player, guess: string, guess_epoch_millis: number) {
+        //Guesses can only be made while a track is playing
+        if (this.game.state != State.TRACK) {
+            return;
+        }
+
+        const result = this.game.processGuess(player.name, guess, guess_epoch_millis);
+        sendMessage(player, {
+            topic: Topic.GUESS_RESULT,
+            result: result,
+        });
+        if (result != GuessResult.INCORRECT) {
+            this.sendLeaderboard();
+        }
     }
 
     /** Select a track to play (called halfway through the wait period) */
@@ -238,31 +265,6 @@ export class Room {
                 () => this.setGameState(State.BETWEEN_ROUNDS)
             );
         }
-    }
-
-    /** Notify guesser of their correctness and update leaderboard if correct */
-    processGuess(player: Player, guess: string, guess_epoch_millis: number) {
-        //Guesses can only be made while a track is playing
-        if (this.game.state != State.TRACK) {
-            return;
-        }
-
-        const result = this.game.processGuess(player.name, guess, guess_epoch_millis);
-        sendMessage(player, {
-            topic: Topic.GUESS_RESULT,
-            result: result,
-        });
-        if (result != GuessResult.INCORRECT) {
-            this.sendLeaderboard();
-        }
-    }
-
-    /** Send the current leaderboard to all players */
-    sendLeaderboard() {
-        this.sendAll({
-            topic: Topic.LEADERBOARD,
-            leaderboard: this.game.leaderboard,
-        });
     }
 }
 
@@ -371,7 +373,7 @@ async function main() {
     if (args.length == 2) {
         const [playlist_arg, access_token] = args;
         playlist_id = playlist_arg;
-        logger.info('Pulling tracks from spotify.');
+        logger.info('Pulling tracks from Spotify.');
         const tracks = await fetchTracks(playlist_id, access_token!);
         logger.info('Loading songs into database.');
         data.loadSongs(playlist_id, tracks);

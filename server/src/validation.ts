@@ -1,5 +1,11 @@
 import { Track } from './data';
 
+/**
+ * Regexes that match title elements we'd like to strip
+ * @see {@link stripTitle}
+ */
+const TITLE_EXTRAS = [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/];
+
 /** Return whether guess is close to the title */
 export function isCorrectTitle(track: Track, guess: string) {
     const guessSimple = simplifyString(guess);
@@ -37,7 +43,7 @@ function simplifyString(str: string, spell_amp: boolean = false) {
 
 /** Remove things like "(feat. Rihanna)" and "- Radio Edit" from title */
 function stripTitle(title: string) {
-    [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/].forEach((regex) => {
+    TITLE_EXTRAS.forEach((regex) => {
         const found = title.match(regex);
         if (found) {
             title = found[1];

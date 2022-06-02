@@ -1,4 +1,4 @@
-import type { Track, TrackList } from './data';
+import type { Track } from './data';
 import { Room } from './server';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 
@@ -39,6 +39,7 @@ export interface Standing {
     points_from_current_track: number;
     progress: Progress;
     place: Place;
+    active: boolean;
 }
 
 /** Marker for the time a player gets both title and artist */
@@ -85,24 +86,39 @@ export class Game {
         this.secs_between_tracks = secs_between_tracks;
     }
 
-    /** Add new player to leaderboard */
-    addPlayer(player: string) {
-        this.leaderboard.set(player, {
-            score: 0,
-            points_from_current_track: 0,
-            progress: Progress.NONE,
-            place: Place.NONE,
-        });
+    /** Add new player to leaderboard or reactivate inactive player */
+    enterPlayer(player: string) {
+        const standing = this.leaderboard.get(player);
+        if (standing) {
+            standing.active = true;
+        } else {
+            this.leaderboard.set(player, {
+                score: 0,
+                points_from_current_track: 0,
+                progress: Progress.NONE,
+                place: Place.NONE,
+                active: true,
+            });
+        }
     }
 
-    /** Remove player from leaderboard */
-    deletePlayer(player: string) {
-        this.leaderboard.delete(player);
+    /** Label player as inactive when they leave the room */
+    deactivatePlayer(player: string) {
+        this.leaderboard.get(player)!.active = false;
     }
 
     /** Reset a player's standing */
     resetPlayer(player: string) {
-        this.addPlayer(player);
+        const standing = this.leaderboard.get(player)!;
+        standing.score = 0;
+        standing.points_from_current_track = 0;
+        standing.progress = Progress.NONE;
+        standing.place = Place.NONE;
+    }
+
+    /** Get the leaderboard with only active players included */
+    getActiveLeaderboard(): Map<string, Standing> {
+        return new Map([...this.leaderboard].filter(([_player, standing]) => standing.active));
     }
 
     /** Reset the standings of all players in the leaderboard */
@@ -159,29 +175,31 @@ export class Game {
     addCompletion(player: string, time: number) {
         this.completions.push({ player: player, time: time });
         this.completions.sort((a, b) => a.time - b.time);
-        this.completions.forEach((completion, index) => {
-            let place, points_from_current_track;
-            switch (index) {
-                case 0:
-                    place = Place.FIRST;
-                    points_from_current_track = 6;
-                    break;
-                case 1:
-                    place = Place.SECOND;
-                    points_from_current_track = 5;
-                    break;
-                case 2:
-                    place = Place.THIRD;
-                    points_from_current_track = 4;
-                    break;
-                default:
-                    place = Place.NONE;
-                    points_from_current_track = 2;
-            }
-            const standing = this.leaderboard.get(completion.player)!;
-            standing.place = place;
-            standing.points_from_current_track = points_from_current_track;
-        });
+        this.completions
+            .filter((completion) => this.leaderboard.get(completion.player)!.active)
+            .forEach((completion, index) => {
+                let place, points_from_current_track;
+                switch (index) {
+                    case 0:
+                        place = Place.FIRST;
+                        points_from_current_track = 6;
+                        break;
+                    case 1:
+                        place = Place.SECOND;
+                        points_from_current_track = 5;
+                        break;
+                    case 2:
+                        place = Place.THIRD;
+                        points_from_current_track = 4;
+                        break;
+                    default:
+                        place = Place.NONE;
+                        points_from_current_track = 2;
+                }
+                const standing = this.leaderboard.get(completion.player)!;
+                standing.place = place;
+                standing.points_from_current_track = points_from_current_track;
+            });
     }
 
     /** Add points from current track to scores and reset completions */
