@@ -43,6 +43,7 @@ interface WSGameConfig {
     topic: Topic.GAME_CONFIG;
     time_between_tracks: number;
     tracks_per_round: number;
+    current_game_state: State;
 }
 
 /** Info for the next track to be played */
@@ -138,11 +139,7 @@ export class Room {
         this.game.enterPlayer(player.name);
         this.sendLeaderboard();
         if (this.game.state != State.LOBBY) {
-            sendMessage(player, {
-                topic: Topic.GAME_CONFIG,
-                time_between_tracks: this.game.secs_between_tracks!,
-                tracks_per_round: this.game.tracks_per_round!,
-            });
+            sendMessage(player, this.getGameConfigMessage());
         }
     }
 
@@ -153,6 +150,15 @@ export class Room {
         this.sendLeaderboard();
     }
 
+    getGameConfigMessage() : WSGameConfig {
+        return {
+            topic: Topic.GAME_CONFIG,
+            time_between_tracks: this.game.secs_between_tracks!,
+            tracks_per_round: this.game.tracks_per_round!,
+            current_game_state: this.game.state!
+        }
+    }
+
     setGameConfig(tracks_per_round: number, time_between_tracks: number) {
         //Setting game config should only be done from the lobby
         if (this.game.state != State.LOBBY) {
@@ -160,11 +166,7 @@ export class Room {
         }
 
         this.game.setGameConfig(tracks_per_round, time_between_tracks);
-        this.sendAll({
-            topic: Topic.GAME_CONFIG,
-            time_between_tracks: time_between_tracks,
-            tracks_per_round: tracks_per_round,
-        });
+        this.sendAll(this.getGameConfigMessage());
     }
 
     setGameState(state: State) {
@@ -216,7 +218,7 @@ export class Room {
         }
     }
 
-    /** Select a track to play (called halfway through the wait period) */
+    /** Select a track to play (called one second before track plays) */
     selectTrack() {
         //Send the next track to play
         const track = this.game.nextTrack();
@@ -227,41 +229,41 @@ export class Room {
             title: track.title,
             aritsts: track.artists,
             track_number: this.game.current_track_number,
-            when_to_start: Date.now() + (this.game.secs_between_tracks! / 2) * 1000, //now + wait/2
+            when_to_start: Date.now() + 1000, //now + 1
         });
 
         //Set game state to TRACK once the track starts playing
         this.addTimeout(
-            this.game.secs_between_tracks! / 2, //now + wait/2
+            1, //now + 1
             () => this.setGameState(State.TRACK)
         );
 
         //Set game state to BETWEEN_TRACKS once the track ends
         this.addTimeout(
-            this.game.secs_between_tracks! / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track
+            1 + TRACK_PLAY_LENGTH_SECS, //now + 1 + track
             () => this.setGameState(State.BETWEEN_TRACKS)
         );
 
         //Update the leaderboard once the next track and subsequent wait period end
         this.addTimeout(
-            (this.game.secs_between_tracks! * 3) / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
+            1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + wait
             () => {
                 this.game.endTrack();
                 this.sendLeaderboard();
             }
         );
 
-        //If round is not over, select another track halfway through the next wait period
+        //If round is not over, select another track one second before the next track plays
         if (this.game.current_track_number < this.game.tracks_per_round!) {
             this.addTimeout(
-                this.game.secs_between_tracks! + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait/2
+                TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + (wait-1)
                 () => this.selectTrack()
             );
         }
         //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
         else {
             this.addTimeout(
-                (this.game.secs_between_tracks! * 3) / 2 + TRACK_PLAY_LENGTH_SECS, //now + wait/2 + track + wait
+                1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + wait
                 () => this.setGameState(State.BETWEEN_ROUNDS)
             );
         }
