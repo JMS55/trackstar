@@ -49,10 +49,8 @@ class TrackStarService {
       signalChange();
     });
 
-    ws = WebSocketChannel.connect(Uri(
-      scheme: 'wss',
-      host: 'trackstar.ml',
-      pathSegments: [this.roomId.toString(), userName],
+    ws = WebSocketChannel.connect(Uri.parse(
+      'wss://trackstar.ml/ws/${this.roomId}/$userName',
     ));
 
     stream = ws.stream.map((msg) => jsonDecode(msg)).listen((msg) {
