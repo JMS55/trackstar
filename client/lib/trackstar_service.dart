@@ -50,9 +50,8 @@ class TrackStarService {
     });
 
     ws = WebSocketChannel.connect(Uri(
-      scheme: 'ws',
-      host: '104.248.230.123',
-      port: 8080,
+      scheme: 'wss',
+      host: 'trackstar.ml',
       pathSegments: [this.roomId.toString(), userName],
     ));
 
@@ -268,7 +267,8 @@ class Standing implements Comparable<Standing> {
     } else if (progress != other.progress) {
       return Enum.compareByIndex(place, other.progress);
     } else {
-      return other.score - score;
+      return (other.score + other.pointsFromCurrentTrack) -
+          (score + pointsFromCurrentTrack);
     }
   }
 }
