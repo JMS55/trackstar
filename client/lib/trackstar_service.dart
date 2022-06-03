@@ -40,7 +40,7 @@ class TrackStarService {
 
     leaderboard = {userName: Standing(0, 0, Progress.noneCorrect, Place.none)};
 
-    audioPlayer.onPlayerCompletion.listen((_) {
+    audioPlayer.onPlayerComplete.listen((_) {
       gameState = GameState.betweenTracks;
 
       guessedTitle = false;
@@ -115,7 +115,7 @@ class TrackStarService {
         albumCoverUrl = msg.albumCoverUrl;
 
         gameState = GameState.guessing;
-        audioPlayer.play(msg.url, isLocal: false);
+        audioPlayer.play(UrlSource(msg.url));
 
         signalChange();
       },
