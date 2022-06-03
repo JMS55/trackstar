@@ -90,8 +90,8 @@ ADD COLUMN title_guessed INT NOT NULL DEFAULT 0;`,
  * Errors can cause crashes at startup, but later should be handled gracefully.
  */
 export class TrackStore {
-    private readonly db: Database;
-    private configCache: Config | null;
+    readonly db: Database;
+    configCache: Config | null;
 
     /** Create and load database. Will (and should) throw an error if it can't open. */
     constructor(db_file?: string) {
@@ -299,21 +299,19 @@ export type TrackList = readonly Track[];
 function open_db(db_file?: string) {
     let db: Database;
     const db_path = db_file || process.env.DB_FILE || 'data.db';
-    try {
-        db = new sqlite3(db_path, { fileMustExist: true });
-    } catch (_) {
-        logger.info('Creating database.');
-        db = new sqlite3('data.db', {});
-        const trans = db.transaction(() => {
-            db.pragma('foreign_keys = ON;');
-            db.exec(SONGS_CREATE);
-            db.exec(PLAYLIST_CREATE);
-            db.exec(CONTENTS_CREATE);
-            db.exec(CONFIG_CREATE);
-            db.pragma('user_version = 2;');
-        });
-        trans();
-    }
+
+    logger.info('Opening database.');
+    db = new sqlite3('data.db', {});
+    
+    const trans = db.transaction(() => {
+        db.pragma('foreign_keys = ON;');
+        db.exec(SONGS_CREATE);
+        db.exec(PLAYLIST_CREATE);
+        db.exec(CONTENTS_CREATE);
+        db.exec(CONFIG_CREATE);
+        db.pragma('user_version = 2;');
+    });
+    trans();
 
     const ver = db.pragma('user_version', { simple: true });
     if (ver < 1) {

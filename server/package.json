@@ -10,7 +10,8 @@
     "get-all-config": "./node_modules/.bin/tsc && TS_LOG_LEVEL=warn node ./bin/cmds.js get-all-config",
     "set-config": "./node_modules/.bin/tsc && node ./bin/cmds.js set-config",
     "update_tracks": "./node_modules/.bin/tsc && node ./bin/cmds.js update-tracks",
-    "dev": "ts-node ./src/index.ts"
+    "dev": "ts-node ./src/server.ts",
+    "test": "./node_modules/.bin/jest --coverage"
   },
   "dependencies": {
     "better-sqlite3": "^7.5.3",
@@ -24,11 +25,14 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.5.0",
     "@types/express": "^4.17.13",
+    "@types/jest": "^28.1.0",
     "@types/node": "^17.0.38",
     "@types/node-fetch": "^2.6.1",
     "@types/spotify-web-api-node": "^5.0.7",
     "@types/ws": "^8.5.3",
+    "jest": "^28.1.0",
     "prettier": "2.6.2",
+    "ts-jest": "^28.0.4",
     "ts-node": "^10.8.0"
   }
 }
