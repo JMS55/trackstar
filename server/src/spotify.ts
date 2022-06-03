@@ -88,14 +88,13 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
     return await trackProm;
 }
 
-export function auth(client_id_param?: string, client_secret_param?: string) {
+export function auth(data: TrackStore, client_id_param?: string, client_secret_param?: string) {
     //Open database and get configs
-    const data = new TrackStore();
     if (client_id_param && client_secret_param) {
         data.setConfig('spotify.clientId', client_id_param);
         data.setConfig('spotify.clientSecret', client_secret_param);
     }
-    const config = data.getConfig();
+    const config = data.getConfig()!;
     const scopes = ['playlist-read-private'],
     redirectUri = config.auth_callback_addr.val + 'callback',
     clientId = config.spotify.clientId.val,
@@ -157,7 +156,7 @@ export function auth(client_id_param?: string, client_secret_param?: string) {
         data.setConfig('spotify.accessToken', api_res.access_token);
         data.setConfig('spotify.refreshToken', api_res.refresh_token);
         res.send("Success! You can close this window.");
-        console.log("Done.");
+        logger.info("Done.");
         process.exit(0);
     
     });
@@ -167,7 +166,8 @@ export function auth(client_id_param?: string, client_secret_param?: string) {
 /** Update tracks.json with the tracks from the given playlist */
 export async function fetchTracks(playlist_id: string, config: SpotifyConfig): Promise<[TrackList, string?, string?]> {
     if (!config.accessToken.val || !config.refreshToken.val || !config.clientId.val || !config.clientSecret.val) { 
-        throw new Error("Need to authenticate. run `npm run auth`");
+        logger.error("Need to authenticate. run `npm run auth`");
+        return [[]];
     }
     API_INSTANCE.setClientId(config.clientId.val!);
     API_INSTANCE.setClientSecret(config.clientSecret.val!);

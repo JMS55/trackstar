@@ -369,6 +369,7 @@ function removeTracksWithNullURL(tracks: TrackList): TrackList {
 async function main() {
     //Open database, fetch songs
     const data = new TrackStore();
+    const config = data.getConfig()!;
 
     const args = process.argv.slice(2);
     let playlist_id = DEFAULT_PLAYLIST;
@@ -376,26 +377,31 @@ async function main() {
         playlist_id = args[0];
     }
     logger.info('Retrieving songs from database.');
-    const tracks = removeTracksWithNullURL(data.getSongs(playlist_id));
+    let tracks = removeTracksWithNullURL(data.getSongs(playlist_id));
     if (tracks.length == 0) {
         logger.warn('No tracks found in playlist. Will try to pull from spotify');
-        const tracks = await fetchTracks(playlist_id, data.getConfig().spotify);
+        const res = await fetchTracks(playlist_id, config.spotify);
+        tracks = res[0];
         logger.info('Loading songs into database.');
-        data.loadSongs(playlist_id, tracks[0]);
-        if (tracks[1]) data.setConfig('spotify.accessToken', tracks[1]);
-        if (tracks[2]) data.setConfig('spotify.refreshToken', tracks[2]);
+        data.loadSongs(playlist_id, res[0]);
+        if (res[1]) data.setConfig('spotify.accessToken', res[1]);
+        if (res[2]) data.setConfig('spotify.refreshToken', res[2]);
+        if (tracks.length == 0) {
+            logger.error('No tracks loaded. Quitting.');
+            return;
+        }
     }
     logger.info('Ready to start.');
 
     //Start server
     const rooms = new Map();
-    const wss = new Server({ port: 8080 });
+    const wss = new Server({ port: config.ws_port.val });
     wss.on('connection', (ws, request) => {
         const [room, player] = handleNewConnection(rooms, tracks, data, ws, request.url!);
         ws.on('close', () => handleClosedConnection(rooms, room, player));
         ws.on('message', (data) => handleMessage(room, player, data.toString()));
     });
-    logger.info('TrackStar server started!');
+    logger.info(`TrackStar server started on port ${config.ws_port.val}!`);
 }
 
 if (require.main === module) {

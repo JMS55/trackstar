@@ -14,6 +14,7 @@ to create an app or to see the client ID and secret.
 3. The auth process requires a callback URL. If you are running the code on a 
 machine without a web browser (a server), do the following:
     - Determine an IP/URL/port for your configuration that is accessible by browser
+    
     This *can* be the same port as above but does not need to be
     - Run `npm run set-config auth_callback_addr <address>`
     This address should be http and include the port and a trailing slash
