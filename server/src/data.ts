@@ -211,7 +211,10 @@ export class TrackStore {
     */
     getConfigValue(key: string, force_update?: boolean): string | null {
         if (!force_update && this.configCache) {
-            return key.split('.').reduce((o,i)=> o ? o[i] : null, this.configCache as any)?.val;
+            const cacheVal = key.split('.').reduce((o,i)=> o ? o[i] : null, this.configCache as any)?.val;
+            if (cacheVal) {
+                return cacheVal.toString();
+            }
         }
         const stmt = this.db.prepare(GET_CONFIG);
         let value: string | null = null;
@@ -224,7 +227,7 @@ export class TrackStore {
     }
 
     /** Set config value, updates whole cache as well. 
-     *  If fail to update cahce, clear cache.
+     *  If fail to update cache, clear cache.
     */
     setConfig(key: string, val: string | null): boolean {
         const stmt = this.db.prepare(SET_CONFIG);
@@ -234,9 +237,8 @@ export class TrackStore {
             logger.error(`Error while setting config value ${key}: ${e}`);
             return false;
         }
-        if (!this.getConfig(true)) {
-            this.configCache = null;
-        }
+        const config = this.getConfig(true);
+        config ? this.configCache = config : this.configCache = null;
         return true;
     }
 }
