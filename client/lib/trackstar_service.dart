@@ -113,7 +113,7 @@ class TrackStarService {
         albumCoverUrl = msg.albumCoverUrl;
 
         gameState = GameState.guessing;
-        audioPlayer.play(UrlSource(msg.url));
+        audioPlayer.play(UrlSource(msg.url), volume: 0.1);
 
         signalChange();
       },
