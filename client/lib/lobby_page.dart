@@ -25,7 +25,7 @@ class _LobbyPageState extends State<LobbyPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (trackStarService.trackNumber != -1) {
+    if (trackStarService.trackNumber != -1 && !navigatedToGamePage) {
       Future.delayed(Duration.zero, () => navigateToGamePage());
     }
 
