@@ -24,16 +24,27 @@ class LogoWidget extends StatelessWidget {
 }
 
 class AvatarCircle extends StatelessWidget {
-  const AvatarCircle({Key? key, required this.username}) : super(key: key);
+  const AvatarCircle({
+    Key? key,
+    required this.username,
+    this.border,
+  }) : super(key: key);
 
   final String username;
+  final Color? border;
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      backgroundColor:
-          Color((Random(username.hashCode).nextDouble() * 0xFFc8c8c8).toInt()),
-      child: Text(username.characters.first),
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(width: 4, color: border ?? Colors.transparent),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: CircleAvatar(
+        backgroundColor: Color(
+            (Random(username.hashCode).nextDouble() * 0xFFc8c8c8).toInt()),
+        child: Text(username.characters.first),
+      ),
     );
   }
 }

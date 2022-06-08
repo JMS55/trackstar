@@ -204,11 +204,7 @@ class _GamePageState extends State<GamePage> {
             }
 
             return ListTile(
-              leading: CircleAvatar(
-                radius: 24,
-                backgroundColor: avatarBorder,
-                child: AvatarCircle(username: username),
-              ),
+              leading: AvatarCircle(username: username, border: avatarBorder),
               title: Text(username),
               subtitle: Text(
                 'Score: ${standing.score + standing.pointsFromCurrentTrack}',
