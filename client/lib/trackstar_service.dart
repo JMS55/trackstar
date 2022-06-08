@@ -72,7 +72,7 @@ class TrackStarService {
 
   void startGame() {
     ws.sink.add(jsonEncode(
-        StartGameCommand(tracksPerRound: 15, timeBetweenTracks: 10).toJson()));
+        StartGameCommand(tracksPerRound: 15, timeBetweenTracks: 15).toJson()));
   }
 
   void startRound() {
