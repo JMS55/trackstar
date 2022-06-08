@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:math';
 import 'package:flutter_countdown_timer/current_remaining_time.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
 import 'package:flutter/material.dart';
@@ -23,33 +22,35 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Room Code: ${widget.trackStarService.roomId.toString().padLeft(4, '0')}',
-        ),
-        actions: [
-          MaterialButton(
-            onPressed: () => setState(
-              () => widget.trackStarService.toggleMute(),
-            ),
-            child: Icon(
-              widget.trackStarService.muted
-                  ? Icons.volume_off_rounded
-                  : Icons.volume_up_rounded,
-            ),
-          )
-        ],
-      ),
-      body: SafeArea(child: buildPage(context)),
-      floatingActionButton: canGuess
-          ? FloatingActionButton.extended(
-              onPressed: () =>
-                  widget.trackStarService.makeGuess(guessController.text),
-              icon: const Icon(Icons.send_outlined),
-              label: const Text('Make Guess'),
+    return RoomLeaveConfirmationDialog(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Room Code: ${widget.trackStarService.roomId.toString().padLeft(4, '0')}',
+          ),
+          actions: [
+            MaterialButton(
+              onPressed: () => setState(
+                () => widget.trackStarService.toggleMute(),
+              ),
+              child: Icon(
+                widget.trackStarService.muted
+                    ? Icons.volume_off_rounded
+                    : Icons.volume_up_rounded,
+              ),
             )
-          : null,
+          ],
+        ),
+        body: SafeArea(child: buildPage(context)),
+        floatingActionButton: canGuess
+            ? FloatingActionButton.extended(
+                onPressed: () =>
+                    widget.trackStarService.makeGuess(guessController.text),
+                icon: const Icon(Icons.send_outlined),
+                label: const Text('Make Guess'),
+              )
+            : null,
+      ),
     );
   }
 
@@ -322,7 +323,6 @@ class _GamePageState extends State<GamePage> {
         CountdownTimer(
           endTime: widget.trackStarService.trackStartTime + 1000 * 30,
           widgetBuilder: (BuildContext context, CurrentRemainingTime? time) =>
-              // TODO: Flash/scale briefly when 5s reached
               Text(
             time == null ? 'Track Over' : '${time.sec}s left',
             style: Theme.of(context).textTheme.titleLarge!.copyWith(

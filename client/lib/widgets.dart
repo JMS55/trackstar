@@ -49,6 +49,46 @@ class AvatarCircle extends StatelessWidget {
   }
 }
 
+class RoomLeaveConfirmationDialog extends StatelessWidget {
+  const RoomLeaveConfirmationDialog({Key? key, required this.child})
+      : super(key: key);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async =>
+          (await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Leave room?'),
+              content: const Text('Joining back later will keep your score.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Back'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    onPrimary: Theme.of(context).colorScheme.onErrorContainer,
+                    primary: Theme.of(context).colorScheme.errorContainer,
+                  ).copyWith(elevation: ButtonStyleButton.allOrNull(0.0)),
+                  child: const Text('Leave room'),
+                ),
+              ],
+            ),
+          )) ??
+          false,
+      child: child,
+    );
+  }
+}
+
 // TODO: Placeholder until flutter updates TextField to material 3
 class TextFieldM3 extends StatelessWidget {
   const TextFieldM3({
