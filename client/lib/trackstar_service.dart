@@ -36,7 +36,7 @@ class TrackStarService {
     required this.userName,
     required this.changeSignal,
   }) {
-    this.roomId = roomId ?? Random().nextInt(99999);
+    this.roomId = roomId ?? Random().nextInt(9999);
 
     leaderboard = {userName: Standing(0, 0, Progress.noneCorrect, Place.none)};
 
