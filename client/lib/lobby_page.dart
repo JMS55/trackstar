@@ -95,13 +95,14 @@ class _LobbyPageState extends State<LobbyPage> {
           ),
         ),
       ),
-      floatingActionButton: widget.isRoomCreator
-          ? FloatingActionButton.extended(
-              onPressed: startGame,
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Start Game'),
-            )
-          : null,
+      floatingActionButton:
+          widget.isRoomCreator || (trackStarService.firstIntoRoom ?? false)
+              ? FloatingActionButton.extended(
+                  onPressed: startGame,
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('Start Game'),
+                )
+              : null,
     );
   }
 

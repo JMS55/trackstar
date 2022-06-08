@@ -28,6 +28,7 @@ class TrackStarService {
   bool guessedArtist = false;
   bool? lastGuessCorrect;
   Map<String, Standing> leaderboard = {};
+  bool? firstIntoRoom;
 
   String trackTitle = "";
   List<String> trackArtists = [];
@@ -39,8 +40,6 @@ class TrackStarService {
     required this.changeSignal,
   }) {
     this.roomId = roomId ?? Random().nextInt(9999);
-
-    leaderboard = {userName: Standing(0, 0, Progress.noneCorrect, Place.none)};
 
     audioPlayer.onPlayerComplete.listen((_) {
       gameState = GameState.betweenTracks;
@@ -147,6 +146,11 @@ class TrackStarService {
 
   void handleLeaderBoard(LeaderBoardMessage msg) {
     leaderboard = msg.leaderboard;
+
+    firstIntoRoom ??= leaderboard.length == 1;
+    if (firstIntoRoom == false && leaderboard.length == 1) {
+      firstIntoRoom = true;
+    }
 
     signalChange();
   }
