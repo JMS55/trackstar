@@ -19,7 +19,6 @@ class _GamePageState extends State<GamePage> {
   final guessController = TextEditingController();
   bool canGuess = false;
   bool guessFieldBackgroundColor = true;
-  bool mute = false; // TODO: Make this value do something
   SplayTreeMap<String, Standing> sortedLeaderboard = SplayTreeMap();
 
   @override
@@ -29,9 +28,13 @@ class _GamePageState extends State<GamePage> {
         title: Text('Room Code: ${widget.trackStarService.roomId}'),
         actions: [
           MaterialButton(
-            onPressed: () => setState(() => mute = !mute),
+            onPressed: () => setState(
+              () => widget.trackStarService.toggleMute(),
+            ),
             child: Icon(
-              mute ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+              widget.trackStarService.muted
+                  ? Icons.volume_off_rounded
+                  : Icons.volume_up_rounded,
             ),
           )
         ],

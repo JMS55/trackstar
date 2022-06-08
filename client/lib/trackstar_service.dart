@@ -10,8 +10,10 @@ part 'trackstar_service.g.dart';
 class TrackStarService {
   late WebSocketChannel ws;
   late StreamSubscription stream;
-  final audioPlayer = AudioPlayer();
   void Function(void Function())? changeSignal;
+
+  final audioPlayer = AudioPlayer();
+  bool muted = false;
 
   int roomId = -1;
   String userName;
@@ -81,6 +83,11 @@ class TrackStarService {
 
   void makeGuess(String guess) {
     ws.sink.add(jsonEncode(MakeGuessCommand(guess).toJson()));
+  }
+
+  void toggleMute() {
+    muted = !muted;
+    audioPlayer.setVolume(muted ? 0 : 0.1);
   }
 
   void handleGameConfig(GameConfigMessage msg) {
