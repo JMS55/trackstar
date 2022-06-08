@@ -247,15 +247,12 @@ class _GamePageState extends State<GamePage> {
         Row(children: [
           widget.trackStarService.guessedTitle
               ? Icon(
-                  Icons.check_circle_outline_rounded,
+                  Icons.music_note,
                   color: Theme.of(context).colorScheme.primary,
                 )
-              : Transform.rotate(
-                  angle: 45 * pi / 180,
-                  child: Icon(
-                    Icons.add_circle_outline_rounded,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+              : Icon(
+                  Icons.music_note_outlined,
+                  color: Theme.of(context).colorScheme.error,
                 ),
           const SizedBox(width: 2),
           Text(
@@ -271,15 +268,12 @@ class _GamePageState extends State<GamePage> {
         Row(children: [
           widget.trackStarService.guessedArtist
               ? Icon(
-                  Icons.check_circle_outline_rounded,
+                  Icons.brush,
                   color: Theme.of(context).colorScheme.primary,
                 )
-              : Transform.rotate(
-                  angle: 45 * pi / 180,
-                  child: Icon(
-                    Icons.add_circle_outline_rounded,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+              : Icon(
+                  Icons.brush_outlined,
+                  color: Theme.of(context).colorScheme.error,
                 ),
           const SizedBox(width: 2),
           Text(
