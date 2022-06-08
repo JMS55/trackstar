@@ -25,7 +25,9 @@ class _GamePageState extends State<GamePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Room Code: ${widget.trackStarService.roomId}'),
+        title: Text(
+          'Room Code: ${widget.trackStarService.roomId.toString().padLeft(4, '0')}',
+        ),
         actions: [
           MaterialButton(
             onPressed: () => setState(

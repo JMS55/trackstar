@@ -40,7 +40,7 @@ class _LobbyPageState extends State<LobbyPage> {
               Card(
                 child: ListTile(
                   title: Text(
-                    trackStarService.roomId.toString(),
+                    trackStarService.roomId.toString().padLeft(4, '0'),
                     style: Theme.of(context)
                         .textTheme
                         .headlineSmall!
