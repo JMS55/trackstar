@@ -41,8 +41,9 @@ class AvatarCircle extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: CircleAvatar(
-        backgroundColor: Color(
-            (Random(username.hashCode).nextDouble() * 0xFFc8c8c8).toInt()),
+        backgroundColor:
+            Color((Random(username.hashCode).nextDouble() * 0xFFc8c8c8).toInt())
+                .withOpacity(0.4),
         child: Text(username.characters.first),
       ),
     );
