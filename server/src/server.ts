@@ -67,6 +67,7 @@ interface WSGuessResult {
 interface WSLeaderBoard {
     topic: Topic.LEADERBOARD;
     leaderboard: Map<string, Standing>;
+    host: string;
 }
 
 /////////////////////////////////////////////
@@ -104,15 +105,13 @@ interface Player {
 export class Room {
     id: string;
     players: Array<Player>;
-    creator: Player;
     playlist: TrackList;
     database: TrackStore;
     game: Game;
     timeouts: Array<NodeJS.Timeout>;
 
-    constructor(id: string, creator: Player, playlist: TrackList, database: TrackStore) {
+    constructor(id: string, playlist: TrackList, database: TrackStore) {
         this.id = id;
-        this.creator = creator;
         this.players = [];
         this.game = new Game(this);
         this.playlist = playlist;
@@ -130,6 +129,7 @@ export class Room {
         this.sendAll({
             topic: Topic.LEADERBOARD,
             leaderboard: this.game.getActiveLeaderboard(),
+            host: this.players[0].name
         });
     }
 
@@ -300,7 +300,7 @@ function handleNewConnection(
         room = rooms.get(room_id)!;
     } else {
         logger.debug(`Room ${room_id} has been created`);
-        room = new Room(room_id, new_player, tracks, data);
+        room = new Room(room_id, tracks, data);
     }
     rooms.set(room_id, room);
     room.addPlayer(new_player);
