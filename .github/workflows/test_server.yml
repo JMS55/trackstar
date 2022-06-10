@@ -9,6 +9,10 @@ on:
   pull_request:
     branches: [ "master" ]
 
+defaults:
+  run:
+    working-directory: server
+
 jobs:
   build:
 
@@ -27,9 +31,6 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - working-directory: ./server
-      run: npm ci
-    - working-directory: ./server
-      run: npm run build --if-present
-    - working-directory: ./server
-      run: npm test
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test
