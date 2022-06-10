@@ -129,7 +129,7 @@ export class Room {
         this.sendAll({
             topic: Topic.LEADERBOARD,
             leaderboard: this.game.getActiveLeaderboard(),
-            host: this.players[0].name
+            host: this.players[0].name,
         });
     }
 
@@ -150,13 +150,13 @@ export class Room {
         this.sendLeaderboard();
     }
 
-    getGameConfigMessage() : WSGameConfig {
+    getGameConfigMessage(): WSGameConfig {
         return {
             topic: Topic.GAME_CONFIG,
             time_between_tracks: this.game.secs_between_tracks!,
             tracks_per_round: this.game.tracks_per_round!,
-            current_game_state: this.game.state!
-        }
+            current_game_state: this.game.state!,
+        };
     }
 
     setGameConfig(tracks_per_round: number, time_between_tracks: number) {

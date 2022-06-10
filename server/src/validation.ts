@@ -20,8 +20,12 @@ export function isCorrectTitle(track: Track, guess: string) {
 export function isCorrectArtist(track: Track, guess: string) {
     const guessSimple = simplifyString(guess);
     for (const artist of track.artists) {
-        const artistSimple = simplifyString(artist);
-        if (closeEnough(artistSimple, guessSimple) || closeEnough(artistSimple, 'the' + guessSimple)) {
+        if (
+            closeEnough(simplifyString(artist), guessSimple) ||
+            closeEnough(simplifyString(artist), 'the' + guessSimple) ||
+            closeEnough(simplifyString(artist, true), guessSimple) ||
+            closeEnough(simplifyString(artist, true), 'the' + guessSimple)
+        ) {
             return true;
         }
     }
