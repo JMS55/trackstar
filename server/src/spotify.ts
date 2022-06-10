@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import Spotify from 'spotify-web-api-node';
 import { logger } from './server';
 import { TrackList } from './data';
@@ -65,7 +64,6 @@ async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
 
             //Configure web request
             const embed_url = 'https://open.spotify.com/embed/track/' + track.id;
-            const AbortController = globalThis.AbortController;
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), WEB_SCRAPE_TIMEOUT);
 
