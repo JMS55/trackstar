@@ -1,4 +1,4 @@
-import { TrackStore } from "./data";
+import TrackStore from "./data";
 import { DEFAULT_PLAYLIST, logger } from "./server";
 import { auth, fetchTracks } from "./spotify";
 
@@ -34,7 +34,7 @@ switch (args[0]) {
     // set_config(key, value)
     case "set-config":
         if (args.length < 3) {
-            console.log("Need to specify a config key and value");
+            console.error("Need to specify a config key and value");
             break;
         }
         if (args[2] == "default") {
@@ -56,5 +56,5 @@ switch (args[0]) {
         });
         break;
     default:
-        console.log("Unknown command");
+        console.error("Unknown command");
 }

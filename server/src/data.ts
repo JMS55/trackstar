@@ -89,7 +89,7 @@ ADD COLUMN title_guessed INT NOT NULL DEFAULT 0;`,
  * Errors shouldn't really happen, only really from IO errors or something very wrong. 
  * Errors can cause crashes at startup, but later should be handled gracefully.
  */
-export class TrackStore {
+export default class TrackStore {
     readonly db: Database;
     configCache: Config | null;
 

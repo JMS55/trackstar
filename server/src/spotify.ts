@@ -1,6 +1,6 @@
 import Spotify from 'spotify-web-api-node';
 import { logger } from './server';
-import { SpotifyConfig, TrackList, TrackStore } from './data';
+import TrackStore, { SpotifyConfig, TrackList } from './data';
 import fetch from 'node-fetch';
 import http from 'http';
 import { AbortSignal } from 'node-fetch/externals';
