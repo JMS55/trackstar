@@ -9,6 +9,8 @@ on:
   pull_request:
     branches: [ "master" ]
 
+env: 
+  ARTIFACT_NODE_VER: 16.x
 defaults:
   run:
     working-directory: server
@@ -35,3 +37,16 @@ jobs:
     - run: npm run build --if-present
     - name: Run tests
       run: npm test
+    - name: Archive build
+      uses: actions/upload-artifact@v3
+      if: ${{ matrix.node-version == env.ARTIFACT_NODE_VER }}
+      with:
+        name: dist
+        path: |
+          server/bin
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v3
+      if: ${{ matrix.node-version == env.ARTIFACT_NODE_VER }}
+      with:
+        name: code-coverage-report
+        path: server/coverage/lcov-report

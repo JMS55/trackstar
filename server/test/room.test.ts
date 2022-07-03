@@ -137,7 +137,7 @@ describe('lobby tests', () => {
                     aritsts: ['artist'],
                 })
             );
-            expect(actual1.when_to_start).toBeCloseTo(Date.now() + 1000, -1);
+            expect(actual1.when_to_start).toBeCloseTo(Date.now() + 1000, -3);
         });
     });
 });

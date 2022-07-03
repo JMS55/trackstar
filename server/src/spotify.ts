@@ -30,18 +30,20 @@ async function pullTracks(playlist_id: string, offset = 0): Promise<Track[]> {
 
     // Convert to track objects and add to track array
     // const items = data.body.items;
-    const songItems: Track[] = data.body.items.map((item) => {
-        const { track } = item;
-        const artists: string[] = track.artists.map((artist) => artist.name);
-        const img = track.album.images[0].url;
-        return {
-            id: track.id,
-            preview_url: track.preview_url,
-            image_url: img,
-            title: track.name,
-            artists,
-        };
-    });
+    const songItems: Track[] = data.body.items
+        .filter((i) => i.track)
+        .map((item) => {
+            const track = item.track!;
+            const artists: string[] = track.artists.map((artist) => artist.name);
+            const img = track.album.images[0].url;
+            return {
+                id: track.id,
+                preview_url: track.preview_url,
+                image_url: img,
+                title: track.name,
+                artists,
+            };
+        });
 
     // Recur if last request returned max items
     if (songItems.length === TRACK_PULL_LIMIT) {

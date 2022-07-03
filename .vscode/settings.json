@@ -1,3 +1,5 @@
 {
-    "prettier.configPath": "./server/prettierrc.json"
+    "prettier.configPath": "./server/.prettierrc.json",
+    "editor.formatOnSave": true,
+    "prettier.ignorePath": "./server/.prettierignore"
 }
