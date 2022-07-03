@@ -11,7 +11,8 @@
     "set-config": "./node_modules/.bin/tsc && node ./bin/cmds.js set-config",
     "update_tracks": "./node_modules/.bin/tsc && node ./bin/cmds.js update-tracks",
     "dev": "ts-node ./src/server.ts",
-    "test": "./node_modules/.bin/jest --coverage"
+    "test": "./node_modules/.bin/jest --coverage",
+    "lint": "./node_modules/.bin/eslint src/**/*.ts test/**/*.ts"
   },
   "dependencies": {
     "better-sqlite3": "^7.5.3",
