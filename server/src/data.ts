@@ -84,9 +84,9 @@ ADD COLUMN title_guessed INT NOT NULL DEFAULT 0;`,
 
 /**
  * DB wrapper
- * 
+ *
  * Error handling: each method returns what happens on an error (usually returns false or null)
- * Errors shouldn't really happen, only really from IO errors or something very wrong. 
+ * Errors shouldn't really happen, only really from IO errors or something very wrong.
  * Errors can cause crashes at startup, but later should be handled gracefully.
  */
 export default class TrackStore {
@@ -99,9 +99,9 @@ export default class TrackStore {
         this.configCache = this.getConfig();
     }
 
-    /** Add songs to the database for a given playlist. Updates playlist table and junction table as well. 
+    /** Add songs to the database for a given playlist. Updates playlist table and junction table as well.
      *  On error, returns false. Will either fully complete or not at all.
-    */
+     */
     loadSongs(playlist_id: string, tracks: Track[]): boolean {
         this.db.prepare(PLAYLIST_INSERT).run(playlist_id, { updated: new Date().getTime() });
         const songStmt = this.db.prepare(SONG_INSERT);
@@ -124,7 +124,7 @@ export default class TrackStore {
             });
         });
         try {
-            txn(tracks);    // if error adding a track, transaction will rollback
+            txn(tracks); // if error adding a track, transaction will rollback
         } catch (_) {
             return false;
         }
@@ -149,9 +149,9 @@ export default class TrackStore {
         return true;
     }
 
-    /** Retrieve songs for a playlist. 
+    /** Retrieve songs for a playlist.
      *  On DB error, returns empty list
-    */
+     */
     getSongs(playlist_id: string): Track[] {
         const stmt = this.db.prepare(SONGS_GET);
         let songs: Track[] = [];
@@ -174,9 +174,9 @@ export default class TrackStore {
         return songs;
     }
 
-    /** Load full config from cache, or update it from the DB. 
-     *  On error, returns null. 
-    */
+    /** Load full config from cache, or update it from the DB.
+     *  On error, returns null.
+     */
     getConfig(force_update?: boolean): Config | null {
         if (!force_update && this.configCache) {
             return this.configCache;
@@ -200,18 +200,18 @@ export default class TrackStore {
                 clientId: configify(configMap.get('spotify.clientId')),
                 clientSecret: configify(configMap.get('spotify.clientSecret')),
                 refreshToken: configify(configMap.get('spotify.refreshToken')),
-            }
+            },
         };
         this.configCache = config;
         return config;
     }
 
-    /** Load single config value from cache, or update *the whole config cache*. 
+    /** Load single config value from cache, or update *the whole config cache*.
      *  On DB error, returns null
-    */
+     */
     getConfigValue(key: string, force_update?: boolean): string | null {
         if (!force_update && this.configCache) {
-            const cacheVal = key.split('.').reduce((o,i)=> o ? o[i] : null, this.configCache as any)?.val;
+            const cacheVal = key.split('.').reduce((o, i) => (o ? o[i] : null), this.configCache as any)?.val;
             if (cacheVal) {
                 return cacheVal.toString();
             }
@@ -226,9 +226,9 @@ export default class TrackStore {
         return value as string | null;
     }
 
-    /** Set config value, updates whole cache as well. 
+    /** Set config value, updates whole cache as well.
      *  If fail to update cache, clear cache.
-    */
+     */
     setConfig(key: string, val: string | null): boolean {
         const stmt = this.db.prepare(SET_CONFIG);
         try {
@@ -238,45 +238,47 @@ export default class TrackStore {
             return false;
         }
         const config = this.getConfig(true);
-        config ? this.configCache = config : this.configCache = null;
+        config ? (this.configCache = config) : (this.configCache = null);
         return true;
     }
 }
 
 export interface Config {
     ws_port: ConfigValue<number>;
-    auth_callback_addr:  ConfigValue<string>; // INCLUDES PORT!!
-    auth_callback_port:  ConfigValue<number>;
+    auth_callback_addr: ConfigValue<string>; // INCLUDES PORT!!
+    auth_callback_port: ConfigValue<number>;
     spotify: SpotifyConfig;
-} 
+}
 
 export interface SpotifyConfig {
-    accessToken:  ConfigValue<string | null>;
-    clientId:  ConfigValue<string | null>;
-    clientSecret:  ConfigValue<string | null>;
-    refreshToken:  ConfigValue<string | null>;
+    accessToken: ConfigValue<string | null>;
+    clientId: ConfigValue<string | null>;
+    clientSecret: ConfigValue<string | null>;
+    refreshToken: ConfigValue<string | null>;
 }
 
-export type ConfigValue<T> = {val: T, default?: true};
+export type ConfigValue<T> = { val: T; default?: true };
 
 function enforceNum(val: string | undefined): number | null {
-    if (!val) {return null;}
+    if (!val) {
+        return null;
+    }
     const num = parseFloat(val);
-    return (isNaN(num)) ? null : num;
+    return isNaN(num) ? null : num;
 }
 
-function configify<T>(val: T | undefined | null) : ConfigValue<T | null>;
+function configify<T>(val: T | undefined | null): ConfigValue<T | null>;
 function configify<T>(val: T | undefined | null, def: T): ConfigValue<T>;
 function configify<T>(val: T | undefined | null, def?: T): ConfigValue<T> | ConfigValue<T | null> {
     if (!val && def) {
         return {
             val: def,
-            default: true
-        }  
+            default: true,
+        };
     } else {
         return {
-            val: val as T | null
-        }
+            val: val as T | null,
+        };
     }
 }
 
@@ -289,10 +291,9 @@ export interface Track {
 }
 
 export interface TrackList {
-    songs: Track[],
-    played: Set<Track>
+    songs: Track[];
+    played: Set<Track>;
 }
-
 
 /** Pick an unplayed song for the next track. */
 export function getRandomUnplayedTrack(list: TrackList) {
@@ -317,7 +318,7 @@ function open_db(db_file?: string) {
 
     logger.info('Opening database.');
     db = new sqlite3('data.db', {});
-    
+
     const trans = db.transaction(() => {
         db.pragma('foreign_keys = ON;');
         db.exec(SONGS_CREATE);

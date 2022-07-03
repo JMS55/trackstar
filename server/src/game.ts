@@ -4,10 +4,10 @@ import { isCorrectTitle, isCorrectArtist } from './validation';
 
 /** Game state */
 export const enum State {
-    LOBBY = "lobby",
-    TRACK = "in track",
-    BETWEEN_TRACKS = "between tracks",
-    BETWEEN_ROUNDS = "between rounds",
+    LOBBY = 'lobby',
+    TRACK = 'in track',
+    BETWEEN_TRACKS = 'between tracks',
+    BETWEEN_ROUNDS = 'between rounds',
 }
 
 /** The result of attempting to validate a guess */
@@ -17,15 +17,12 @@ export const enum GuessResult {
     INCORRECT = 'incorrect', //Includes case when player guesses something they already got right
 }
 
-
 /** Store round guess information for analytics */
 export interface RoundData {
     plays?: number;
     title?: number;
     artist?: number;
 }
-
-
 
 /** A game contains rounds, which in turn contain tracks */
 export default class Game {
@@ -38,7 +35,6 @@ export default class Game {
     private playlist: TrackList;
     private leaderboard: Leaderboard;
     private updateRoundData: (i: string, d: RoundData) => boolean;
-    
 
     constructor(playlist: Track[], updateRoundData: (i: string, d: RoundData) => boolean) {
         this.state = State.LOBBY;
@@ -46,7 +42,7 @@ export default class Game {
         this.secs_between_tracks = null;
         this.current_track = null;
         this.current_track_number = 0;
-        this.playlist = {songs: playlist, played: new Set()};
+        this.playlist = { songs: playlist, played: new Set() };
         this.leaderboard = new Leaderboard();
         this.updateRoundData = updateRoundData;
     }
@@ -123,6 +119,6 @@ export default class Game {
     /** Add points from current track to scores and reset completions */
     endTrack() {
         this.leaderboard.endRound();
-        this.updateRoundData(this.current_track!.id, {plays: this.leaderboard.getActive().size});
+        this.updateRoundData(this.current_track!.id, { plays: this.leaderboard.getActive().size });
     }
 }

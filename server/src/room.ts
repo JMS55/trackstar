@@ -1,9 +1,8 @@
-
-import TrackStore, { Track } from "./data";
-import Game, { GuessResult, State } from "./game";
-import WebSocket from "ws";
-import { Standing } from "./leaderboard";
-import { logger, prettyJson, ServerWSMessage, Topic, TRACK_PLAY_LENGTH_SECS } from "./server";
+import TrackStore, { Track } from './data';
+import Game, { GuessResult, State } from './game';
+import WebSocket from 'ws';
+import { Standing } from './leaderboard';
+import { logger, prettyJson, ServerWSMessage, Topic, TRACK_PLAY_LENGTH_SECS } from './server';
 
 export interface Player {
     client: WebSocket;

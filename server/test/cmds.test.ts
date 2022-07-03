@@ -1,5 +1,4 @@
-
-import TrackStore from "../src/data";
+import TrackStore from '../src/data';
 
 const getConfig = jest.fn();
 const setConfig = jest.fn();
@@ -12,9 +11,8 @@ jest.mock('../src/data', () => {
             setConfig,
             loadSongs,
             getConfigValue,
-        }
-    }
-    );
+        };
+    });
 });
 
 let spotify: any;
@@ -27,12 +25,12 @@ global.console = {
     info: jest.fn(),
     // warn: jest.fn(),
     error: jest.fn(),
-  };
+};
 
 beforeEach(() => {
     jest.resetModules();
     spotify = require('../src/spotify');
-  });
+});
 
 afterEach(() => jest.resetAllMocks());
 
@@ -40,7 +38,7 @@ describe('test positive cmds', () => {
     test('auth no params calls auth file', () => {
         process.argv = ['node', 'server.js', 'auth'];
         const mock = jest.spyOn(spotify, 'auth').mockImplementation(() => {});
-        
+
         require('../src/cmds');
         expect(mock).toBeCalledWith(expect.anything());
     });
@@ -49,7 +47,7 @@ describe('test positive cmds', () => {
         process.argv = ['node', 'server.js', 'auth', 'blah', 'blah'];
 
         const mock = jest.spyOn(spotify, 'auth').mockImplementation(() => {});
-        
+
         require('../src/cmds');
         expect(mock).toBeCalledWith(expect.anything(), 'blah', 'blah');
     });
@@ -59,7 +57,6 @@ describe('test positive cmds', () => {
 
         require('../src/cmds');
         expect(getConfigValue).toBeCalledWith('blah');
-        
     });
 
     test('get-all-config calls db', () => {
@@ -67,7 +64,6 @@ describe('test positive cmds', () => {
 
         require('../src/cmds');
         expect(getConfig).toBeCalledWith();
-        
     });
 
     test('set-config erase calls db', () => {
@@ -87,10 +83,10 @@ describe('test positive cmds', () => {
     test('update-tracks calls spotify and db', async () => {
         process.argv = ['node', 'server.js', 'update-tracks', 'blah'];
 
-        const mock = jest.spyOn(spotify, 'fetchTracks').mockImplementation(() => Promise.resolve([[], "a", "a"]));
+        const mock = jest.spyOn(spotify, 'fetchTracks').mockImplementation(() => Promise.resolve([[], 'a', 'a']));
         getConfig.mockImplementationOnce(() => {
-            return {spotify: {accessToken: 'blah', refreshToken: 'blah'}};
-        })
+            return { spotify: { accessToken: 'blah', refreshToken: 'blah' } };
+        });
 
         await require('../src/cmds');
 
@@ -99,16 +95,15 @@ describe('test positive cmds', () => {
         expect(setConfig).toBeCalledWith('spotify.refreshToken', 'a');
 
         expect(mock).toBeCalledWith(expect.anything(), expect.anything());
-
     });
 
     test('update-tracks wuth no returned tokens does not call db', async () => {
         process.argv = ['node', 'server.js', 'update-tracks', 'blah'];
 
-        const mock = jest.spyOn(spotify, 'fetchTracks').mockImplementation(() => Promise.resolve([[], "", ""]));
+        const mock = jest.spyOn(spotify, 'fetchTracks').mockImplementation(() => Promise.resolve([[], '', '']));
         getConfig.mockImplementationOnce(() => {
-            return {spotify: {accessToken: 'blah', refreshToken: 'blah'}};
-        })
+            return { spotify: { accessToken: 'blah', refreshToken: 'blah' } };
+        });
 
         await require('../src/cmds');
 
@@ -117,7 +112,6 @@ describe('test positive cmds', () => {
         expect(setConfig).not.toBeCalled();
 
         expect(mock).toBeCalledWith(expect.anything(), expect.anything());
-
     });
 });
 
@@ -128,7 +122,7 @@ describe('test negative cmds', () => {
 
         require('../src/cmds');
         expect(console.error).toBeCalled();
-    })
+    });
 
     test('other comd causes error', () => {
         process.argv = ['node', 'server.js', 'hi'];
@@ -136,7 +130,7 @@ describe('test negative cmds', () => {
 
         require('../src/cmds');
         expect(console.error).toBeCalled();
-    })
+    });
 
     test('no set config value causes error', () => {
         process.argv = ['node', 'server.js', 'set-config', 'blah'];
@@ -144,7 +138,7 @@ describe('test negative cmds', () => {
 
         require('../src/cmds');
         expect(console.error).toBeCalled();
-    })
+    });
 
     test('no set config key+value causes error', () => {
         process.argv = ['node', 'server.js', 'set-config'];
@@ -152,5 +146,5 @@ describe('test negative cmds', () => {
 
         require('../src/cmds');
         expect(console.error).toBeCalled();
-    })
+    });
 });

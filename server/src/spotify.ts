@@ -99,11 +99,11 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
     }
     const config = data.getConfig()!;
     const scopes = ['playlist-read-private'],
-    redirectUri = config.auth_callback_addr.val + 'callback',
-    clientId = config.spotify.clientId.val,
-    clientSecret = config.spotify.clientSecret.val,
-    state = Math.random().toString(36).slice(2);
-    
+        redirectUri = config.auth_callback_addr.val + 'callback',
+        clientId = config.spotify.clientId.val,
+        clientSecret = config.spotify.clientSecret.val,
+        state = Math.random().toString(36).slice(2);
+
     if (config.auth_callback_addr.default) {
         logger.warn(`No redirect URI in DB. Using default of ${redirectUri}`);
     }
@@ -120,15 +120,14 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
     });
 
     const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
-    console.log("\n\n***********************************\n*** AUTH INSTRUCTIONS\n***\n***")
-    console.log('*** 1. GO TO:')
+    console.log('\n\n***********************************\n*** AUTH INSTRUCTIONS\n***\n***');
+    console.log('*** 1. GO TO:');
     console.log(`***\n*** https://developer.spotify.com/dashboard/applications/${clientId}`);
     console.log(`***\n***\n*** 2. ADD THIS LINK AS A REDIRECT URI:`);
-    console.log(`***\n*** ${redirectUri}`)
-    console.log("***\n***\n*** 3. AUTHORIZE THE APP VIA THIS LINK:");
+    console.log(`***\n*** ${redirectUri}`);
+    console.log('***\n***\n*** 3. AUTHORIZE THE APP VIA THIS LINK:');
     console.log(`***\n*** ${authorizeURL}`);
-    console.log("***\n***********************************");
-
+    console.log('***\n***********************************');
 
     http.createServer(async function (req, res) {
         let url = new URL(req.url!, redirectUri);
@@ -137,33 +136,35 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
             const code = url.searchParams.get('code');
             const error = url.searchParams.get('error');
             if (ret_state != state) {
-                logger.error("Returned state does not match.");
-                process.exit(1);  
+                logger.error('Returned state does not match.');
+                process.exit(1);
             }
             if (error) {
                 logger.error(`Error from spotify: ${error}`);
                 process.exit(1);
             }
-    
+
             let api_res = await fetch('https://accounts.spotify.com/api/token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': `Basic ${Buffer.from(clientId + ':' + clientSecret).toString('base64')}`
+                    Authorization: `Basic ${Buffer.from(clientId + ':' + clientSecret).toString('base64')}`,
                 },
-                body:`grant_type=authorization_code&code=${code}&redirect_uri=${redirectUri}`
-            }).then(function(response) {
-                return response.json() as any;
-            }).catch(function(err) {
-                logger.error(`Error getting access token: ${err}`);
-                process.exit(1);
-            });
+                body: `grant_type=authorization_code&code=${code}&redirect_uri=${redirectUri}`,
+            })
+                .then(function (response) {
+                    return response.json() as any;
+                })
+                .catch(function (err) {
+                    logger.error(`Error getting access token: ${err}`);
+                    process.exit(1);
+                });
             //TODO: Set DB fields
             data.setConfig('spotify.accessToken', api_res.access_token);
             data.setConfig('spotify.refreshToken', api_res.refresh_token);
-            res.write("Success! You can close this window.");
+            res.write('Success! You can close this window.');
             res.end();
-            logger.info("Done.");
+            logger.info('Done.');
             process.exit(0);
         }
     }).listen(config.auth_callback_port.val);
@@ -171,8 +172,8 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
 
 /** Update tracks.json with the tracks from the given playlist */
 export async function fetchTracks(playlist_id: string, config: SpotifyConfig): Promise<[Track[], string?, string?]> {
-    if (!config.accessToken.val || !config.refreshToken.val || !config.clientId.val || !config.clientSecret.val) { 
-        logger.error("Need to authenticate. run `npm run auth`");
+    if (!config.accessToken.val || !config.refreshToken.val || !config.clientId.val || !config.clientSecret.val) {
+        logger.error('Need to authenticate. run `npm run auth`');
         return [[]];
     }
     API_INSTANCE.setClientId(config.clientId.val!);

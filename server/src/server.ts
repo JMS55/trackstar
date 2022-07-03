@@ -1,5 +1,5 @@
 import winston, { format } from 'winston';
-import { Literal, Record, Union, Number, String } from "runtypes";
+import { Literal, Record, Union, Number, String } from 'runtypes';
 import { Server, WebSocket } from 'ws';
 import TrackStore, { Track } from './data';
 import { GuessResult, State } from './game';
@@ -23,7 +23,6 @@ export const TRACK_PLAY_LENGTH_SECS = 30;
 
 /** All games are this playlist (for now) */
 export const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
-
 
 /** Topics for server/client messages */
 export const enum Topic {
@@ -112,7 +111,7 @@ function handleNewConnection(
     player_name = decodeURIComponent(player_name);
     const new_player: Player = {
         client: ws,
-        name: player_name
+        name: player_name,
     };
     let room: Room;
     if (rooms.has(room_id)) {
@@ -228,5 +227,5 @@ if (require.main === module) {
 }
 
 export const forTests = {
-    handleMessage
-}
+    handleMessage,
+};

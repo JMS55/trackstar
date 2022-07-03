@@ -43,13 +43,13 @@ export default class Leaderboard {
             points_from_current_track: 0,
             progress: Progress.NONE,
             place: Place.NONE,
-            active: true
+            active: true,
         });
     }
 
     /** Reset the standings of all players in the leaderboard */
     resetLeaderboard() {
-        for (const [player,_] of this.board) {
+        for (const [player, _] of this.board) {
             this.addPlayer(player);
         }
     }
@@ -59,7 +59,6 @@ export default class Leaderboard {
         return new Map([...this.board].filter(([_player, standing]) => standing.active));
     }
 
-    
     endRound() {
         this.board.forEach((standing) => {
             standing.score += standing.points_from_current_track;
@@ -83,30 +82,28 @@ export default class Leaderboard {
         this.completions.set(player, time);
         const keys = [...this.completions.entries()];
         keys.sort((a, b) => a[1] - b[1]);
-        keys
-            .filter((c) => this.board.get(c[0])!.active)
-            .forEach((completion, index) => {
-                let place, points_from_current_track;
-                switch (index) {
-                    case 0:
-                        place = Place.FIRST;
-                        points_from_current_track = 6;
-                        break;
-                    case 1:
-                        place = Place.SECOND;
-                        points_from_current_track = 5;
-                        break;
-                    case 2:
-                        place = Place.THIRD;
-                        points_from_current_track = 4;
-                        break;
-                    default:
-                        place = Place.NONE;
-                        points_from_current_track = 2;
-                }
-                const standing = this.board.get(completion[0])!;
-                standing.place = place;
-                standing.points_from_current_track = points_from_current_track;
-            });
+        keys.filter((c) => this.board.get(c[0])!.active).forEach((completion, index) => {
+            let place, points_from_current_track;
+            switch (index) {
+                case 0:
+                    place = Place.FIRST;
+                    points_from_current_track = 6;
+                    break;
+                case 1:
+                    place = Place.SECOND;
+                    points_from_current_track = 5;
+                    break;
+                case 2:
+                    place = Place.THIRD;
+                    points_from_current_track = 4;
+                    break;
+                default:
+                    place = Place.NONE;
+                    points_from_current_track = 2;
+            }
+            const standing = this.board.get(completion[0])!;
+            standing.place = place;
+            standing.points_from_current_track = points_from_current_track;
+        });
     }
 }
