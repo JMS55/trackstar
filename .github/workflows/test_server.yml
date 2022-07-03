@@ -80,7 +80,7 @@ jobs:
         with:
           context: ./server
           push: true
-          tags: 'drp19/trackstar:${{ GITHUB_SHA }}'
+          tags: '${{ secrets.DOCKERHUB_USERNAME }}/trackstar:${{ env.GITHUB_SHA }}'
       -
         name: Build and push to latest
         if: ${{ env.GITHUB_REF_NAME == 'master' }}
@@ -89,5 +89,5 @@ jobs:
           context: ./server
           push: true
           tags: |
-            - drp19/trackstar:latest
-            - 'drp19/trackstar:${{ GITHUB_SHA }}'
+            - ${{ secrets.DOCKERHUB_USERNAME }}/trackstar:latest
+            - '${{ secrets.DOCKERHUB_USERNAME }}/trackstar:${{ env.GITHUB_SHA }}'
