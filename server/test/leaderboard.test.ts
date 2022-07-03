@@ -1,4 +1,5 @@
-import Leaderboard, { Place, Progress } from '../src/leaderboard';
+import Leaderboard from '../src/leaderboard';
+import { Place, Progress } from '../src/types';
 
 describe('testing completion points system', () => {
     describe('single user', () => {
@@ -59,7 +60,7 @@ describe('testing completion points system', () => {
     });
 
     describe('multiple players', () => {
-        let board = new Leaderboard();
+        const board = new Leaderboard();
         const name1 = 'player1';
         const name2 = 'player2';
         const name3 = 'player3';

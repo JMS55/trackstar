@@ -1,17 +1,14 @@
 import TrackStore from '../src/data';
 import Room from '../src/room';
 import { forTests } from '../src/server';
+
 const { handleMessage } = forTests;
 
 const setGameConfig = jest.fn();
 const startRound = jest.fn();
 const processGuess = jest.fn();
 
-jest.mock('../src/room', () => {
-    return jest.fn().mockImplementation(() => {
-        return { setGameConfig, startRound, processGuess };
-    });
-});
+jest.mock('../src/room', () => jest.fn().mockImplementation(() => ({ setGameConfig, startRound, processGuess })));
 
 describe('Handle message', () => {
     const room = new Room('id', [], {} as TrackStore);
@@ -34,7 +31,6 @@ describe('Handle message', () => {
             tracks_per_round: 1,
             time_between_tracks: 2,
         };
-        const room = new Room('id', [], {} as TrackStore);
         handleMessage(room, {} as any, JSON.stringify(msg));
         expect(setGameConfig).toHaveBeenCalledWith(1, 2);
     });

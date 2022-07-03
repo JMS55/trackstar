@@ -8,7 +8,7 @@ global.console = {
     debug: jest.fn(),
     info: jest.fn(),
     // warn: jest.fn(),
-    //error: jest.fn(),
+    // error: jest.fn(),
 };
 
 describe('testing memory DB and tables', () => {

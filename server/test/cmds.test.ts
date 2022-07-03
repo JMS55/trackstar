@@ -1,19 +1,17 @@
-import TrackStore from '../src/data';
-
+/* eslint-disable no-console */
+/* eslint-disable global-require */
 const getConfig = jest.fn();
 const setConfig = jest.fn();
 const loadSongs = jest.fn();
 const getConfigValue = jest.fn();
-jest.mock('../src/data', () => {
-    return jest.fn().mockImplementation(() => {
-        return {
-            getConfig,
-            setConfig,
-            loadSongs,
-            getConfigValue,
-        };
-    });
-});
+jest.mock('../src/data', () =>
+    jest.fn().mockImplementation(() => ({
+        getConfig,
+        setConfig,
+        loadSongs,
+        getConfigValue,
+    }))
+);
 
 let spotify: any;
 
@@ -84,9 +82,7 @@ describe('test positive cmds', () => {
         process.argv = ['node', 'server.js', 'update-tracks', 'blah'];
 
         const mock = jest.spyOn(spotify, 'fetchTracks').mockImplementation(() => Promise.resolve([[], 'a', 'a']));
-        getConfig.mockImplementationOnce(() => {
-            return { spotify: { accessToken: 'blah', refreshToken: 'blah' } };
-        });
+        getConfig.mockImplementationOnce(() => ({ spotify: { accessToken: 'blah', refreshToken: 'blah' } }));
 
         await require('../src/cmds');
 
@@ -101,9 +97,7 @@ describe('test positive cmds', () => {
         process.argv = ['node', 'server.js', 'update-tracks', 'blah'];
 
         const mock = jest.spyOn(spotify, 'fetchTracks').mockImplementation(() => Promise.resolve([[], '', '']));
-        getConfig.mockImplementationOnce(() => {
-            return { spotify: { accessToken: 'blah', refreshToken: 'blah' } };
-        });
+        getConfig.mockImplementationOnce(() => ({ spotify: { accessToken: 'blah', refreshToken: 'blah' } }));
 
         await require('../src/cmds');
 

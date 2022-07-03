@@ -1,42 +1,42 @@
 import { Track } from '../src/data';
-import Game, { GuessResult, State } from '../src/game';
-import Leaderboard, { Progress } from '../src/leaderboard';
+import Game from '../src/game';
+import { GuessResult, Progress, State } from '../src/types';
 
 const addPlayer = jest.fn();
 const getPlayer = jest.fn();
 const updateRoundData = jest.fn();
 const updatePlayerRound = jest.fn();
-jest.mock('../src/leaderboard', () => {
-    return jest.fn().mockImplementation(() => {
-        return { addPlayer, getPlayer, updatePlayerRound };
-    });
-});
-jest.mock('../src/data', () => {
-    return {
-        getRandomUnplayedTrack: jest.fn(() => {
-            return {
+jest.mock('../src/leaderboard', () =>
+    jest.fn().mockImplementation(() => ({
+        addPlayer,
+        getPlayer,
+        updatePlayerRound,
+    }))
+);
+jest.mock('../src/data', () => ({
+    getRandomUnplayedTrack: jest.fn(
+        () =>
+            ({
                 id: 'track1',
                 artists: ['artist1'],
                 title: 'title1',
                 preview_url: 'url1',
                 image_url: 'url2',
-            } as Track;
-        }),
-    };
-});
+            } as Track)
+    ),
+}));
 
-jest.mock('../src/validation', () => {
-    return {
-        isCorrectArtist: jest.fn((t, s) => t.artists[0] == s),
-        isCorrectTitle: jest.fn((t, s) => t.title == s),
-    };
-});
+jest.mock('../src/validation', () => ({
+    isCorrectArtist: jest.fn((t, s) => t.artists[0] === s),
+    isCorrectTitle: jest.fn((t, s) => t.title === s),
+}));
 
 beforeEach(() => jest.clearAllMocks());
 
 describe('basic functionality', () => {
     test('adding players adds them to the leaderboard', () => {
-        const game = new Game([], (_, __) => true);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const game = new Game([], (_i, _d) => true);
         game.enterPlayer('player1');
         game.enterPlayer('player2');
         expect(addPlayer).toHaveBeenCalledTimes(2);
@@ -49,7 +49,8 @@ describe('basic functionality', () => {
     });
 
     test('player leaves and rejoins changes the active flag', () => {
-        const game = new Game([], (_, __) => true);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const game = new Game([], (_i, _d) => true);
         game.enterPlayer('player1');
         game.enterPlayer('player2');
         expect(addPlayer).toHaveBeenCalledTimes(2);

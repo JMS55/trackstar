@@ -1,9 +1,9 @@
 import Spotify from 'spotify-web-api-node';
-import { logger } from './server';
-import TrackStore, { SpotifyConfig, Track } from './data';
 import fetch from 'node-fetch';
 import http from 'http';
 import { AbortSignal } from 'node-fetch/externals';
+import logger from './logging';
+import TrackStore, { SpotifyConfig, Track } from './data';
 
 /** Max tracks Spotify will let us read from a playlist */
 const TRACK_PULL_LIMIT = 100;
@@ -15,23 +15,23 @@ const API_INSTANCE = new Spotify();
 
 /** Recursively get all tracks from the playlist with the given ID */
 async function pullTracks(playlist_id: string, offset = 0): Promise<Track[]> {
-    //Get raw track data
+    // Get raw track data
     const data = await API_INSTANCE.getPlaylistTracks(playlist_id, {
-        offset: offset,
+        offset,
         limit: TRACK_PULL_LIMIT,
         fields: 'items.track(id,name,preview_url,album(images),artists.name)',
     });
 
-    //Check if call was successful
-    if (data.statusCode != 200) {
+    // Check if call was successful
+    if (data.statusCode !== 200) {
         logger.warn(`Error response from Spotify: ${data.body}`);
         return [];
     }
 
-    //Convert to track objects and add to track array
-    //const items = data.body.items;
+    // Convert to track objects and add to track array
+    // const items = data.body.items;
     const songItems: Track[] = data.body.items.map((item) => {
-        const track = item.track;
+        const { track } = item;
         const artists: string[] = track.artists.map((artist) => artist.name);
         const img = track.album.images[0].url;
         return {
@@ -39,12 +39,12 @@ async function pullTracks(playlist_id: string, offset = 0): Promise<Track[]> {
             preview_url: track.preview_url,
             image_url: img,
             title: track.name,
-            artists: artists,
+            artists,
         };
     });
 
-    //Recur if last request returned max items
-    if (songItems.length == TRACK_PULL_LIMIT) {
+    // Recur if last request returned max items
+    if (songItems.length === TRACK_PULL_LIMIT) {
         const newTracks = await pullTracks(playlist_id, offset + TRACK_PULL_LIMIT);
         return songItems.concat(newTracks);
     }
@@ -60,49 +60,50 @@ async function pullTracks(playlist_id: string, offset = 0): Promise<Track[]> {
 async function fillMissingUrls(tracks: Track[]): Promise<Track[]> {
     const trackProm = Promise.all(
         tracks.map(async (track) => {
-            //Continue if track already has a preview URL
+            // Continue if track already has a preview URL
             if (track.preview_url) {
                 return track;
             }
 
-            //Configure web request
-            const embed_url = 'https://open.spotify.com/embed/track/' + track.id;
-            const AbortController = globalThis.AbortController;
+            // Configure web request
+            const embedUrl = `https://open.spotify.com/embed/track/${track.id}`;
+            const { AbortController } = globalThis;
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), WEB_SCRAPE_TIMEOUT);
 
-            //Attempt to scrape the embed page
+            const newTrack = track;
+            // Attempt to scrape the embed page
             try {
-                const response = await fetch(embed_url, {
+                const response = await fetch(embedUrl, {
                     signal: controller.signal as AbortSignal,
                 });
                 const body = await response.text();
                 const tail = body.substring(body.indexOf('preview_url') + 20);
-                const preview_url = tail.substring(0, tail.indexOf('%3Fcid%3D'));
-                track.preview_url = decodeURIComponent(preview_url);
+                const previewUrl = tail.substring(0, tail.indexOf('%3Fcid%3D'));
+                newTrack.preview_url = decodeURIComponent(previewUrl);
             } catch (err) {
                 logger.warn(`Error fetching track preview URL: ${err}`);
             } finally {
                 clearTimeout(timeout);
-                return track;
             }
+            return newTrack;
         })
     );
-    return await trackProm;
+    return trackProm;
 }
 
 export function auth(data: TrackStore, client_id_param?: string, client_secret_param?: string) {
-    //Open database and get configs
+    // Open database and get configs
     if (client_id_param && client_secret_param) {
         data.setConfig('spotify.clientId', client_id_param);
         data.setConfig('spotify.clientSecret', client_secret_param);
     }
     const config = data.getConfig()!;
-    const scopes = ['playlist-read-private'],
-        redirectUri = config.auth_callback_addr.val + 'callback',
-        clientId = config.spotify.clientId.val,
-        clientSecret = config.spotify.clientSecret.val,
-        state = Math.random().toString(36).slice(2);
+    const scopes = ['playlist-read-private'];
+    const redirectUri = `${config.auth_callback_addr.val}callback`;
+    const clientId = config.spotify.clientId.val;
+    const clientSecret = config.spotify.clientSecret.val;
+    const state = Math.random().toString(36).slice(2);
 
     if (config.auth_callback_addr.default) {
         logger.warn(`No redirect URI in DB. Using default of ${redirectUri}`);
@@ -114,12 +115,13 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
 
     // create callback web server and listen for response
     const spotifyApi = new Spotify({
-        redirectUri: redirectUri,
-        clientId: clientId,
-        clientSecret: clientSecret,
+        redirectUri,
+        clientId,
+        clientSecret,
     });
 
     const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
+    /* eslint-disable no-console */
     console.log('\n\n***********************************\n*** AUTH INSTRUCTIONS\n***\n***');
     console.log('*** 1. GO TO:');
     console.log(`***\n*** https://developer.spotify.com/dashboard/applications/${clientId}`);
@@ -128,14 +130,15 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
     console.log('***\n***\n*** 3. AUTHORIZE THE APP VIA THIS LINK:');
     console.log(`***\n*** ${authorizeURL}`);
     console.log('***\n***********************************');
+    /* eslint-enable no-console */
 
-    http.createServer(async function (req, res) {
-        let url = new URL(req.url!, redirectUri);
-        if (url.pathname == '/callback') {
-            const ret_state = url.searchParams.get('state');
+    http.createServer(async (req, res) => {
+        const url = new URL(req.url!, redirectUri);
+        if (url.pathname === '/callback') {
+            const retState = url.searchParams.get('state');
             const code = url.searchParams.get('code');
             const error = url.searchParams.get('error');
-            if (ret_state != state) {
+            if (retState !== state) {
                 logger.error('Returned state does not match.');
                 process.exit(1);
             }
@@ -144,24 +147,21 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
                 process.exit(1);
             }
 
-            let api_res = await fetch('https://accounts.spotify.com/api/token', {
+            const apiRes = await fetch('https://accounts.spotify.com/api/token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    Authorization: `Basic ${Buffer.from(clientId + ':' + clientSecret).toString('base64')}`,
+                    Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
                 },
                 body: `grant_type=authorization_code&code=${code}&redirect_uri=${redirectUri}`,
             })
-                .then(function (response) {
-                    return response.json() as any;
-                })
-                .catch(function (err) {
+                .then((response) => response.json() as any)
+                .catch((err) => {
                     logger.error(`Error getting access token: ${err}`);
                     process.exit(1);
                 });
-            //TODO: Set DB fields
-            data.setConfig('spotify.accessToken', api_res.access_token);
-            data.setConfig('spotify.refreshToken', api_res.refresh_token);
+            data.setConfig('spotify.accessToken', apiRes.access_token);
+            data.setConfig('spotify.refreshToken', apiRes.refresh_token);
             res.write('Success! You can close this window.');
             res.end();
             logger.info('Done.');
@@ -181,8 +181,8 @@ export async function fetchTracks(playlist_id: string, config: SpotifyConfig): P
     API_INSTANCE.setAccessToken(config.accessToken.val!);
     API_INSTANCE.setRefreshToken(config.refreshToken.val!);
     const resp = await API_INSTANCE.refreshAccessToken();
-    //Check if call was successful
-    if (resp.statusCode != 200) {
+    // Check if call was successful
+    if (resp.statusCode !== 200) {
         logger.warn(`Error response from Spotify: ${resp.body}`);
         return [[]];
     }

@@ -1,5 +1,6 @@
+/* eslint-disable no-console */
 import TrackStore from './data';
-import { DEFAULT_PLAYLIST, logger } from './server';
+import { DEFAULT_PLAYLIST } from './server';
 import { auth, fetchTracks } from './spotify';
 
 /**
@@ -37,24 +38,25 @@ switch (args[0]) {
             console.error('Need to specify a config key and value');
             break;
         }
-        if (args[2] == 'default') {
+        if (args[2] === 'default') {
             db.setConfig(args[1], null);
         } else {
             db.setConfig(args[1], args[2]);
         }
         break;
     // update_tracks(playlist_id?)
-    case 'update-tracks':
-        const playlist_id = args[1] || DEFAULT_PLAYLIST;
+    case 'update-tracks': {
+        const playlistId = args[1] || DEFAULT_PLAYLIST;
         const config = db.getConfig()!.spotify;
         console.log('Pulling tracks from spotify.');
-        fetchTracks(playlist_id, config).then(([tracks, access, refresh]) => {
+        fetchTracks(playlistId, config).then(([tracks, access, refresh]) => {
             console.log('Loading songs into database.');
-            db.loadSongs(playlist_id, tracks);
+            db.loadSongs(playlistId, tracks);
             if (access) db.setConfig('spotify.accessToken', access);
             if (refresh) db.setConfig('spotify.refreshToken', refresh);
         });
         break;
+    }
     default:
         console.error('Unknown command');
 }

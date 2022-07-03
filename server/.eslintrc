@@ -6,7 +6,7 @@
         "prettier/prettier": ["error"]
     },
     "parserOptions": {
-        "project": "./tsconfig.json"
+        "project": ["./tsconfig.json", "./test/tsconfig.json"]
     },
-    "ignorePatterns": ["node_modules/", "dist/", "coverage/"],
+    "ignorePatterns": ["node_modules/", "dist/", "coverage/"]
 }

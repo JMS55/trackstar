@@ -1,8 +1,11 @@
-import TrackStore, { Track } from './data';
-import Game, { GuessResult, State } from './game';
 import WebSocket from 'ws';
-import { Standing } from './leaderboard';
-import { logger, prettyJson, ServerWSMessage, Topic, TRACK_PLAY_LENGTH_SECS } from './server';
+import TrackStore, { Track } from './data';
+import Game from './game';
+import logger, { prettyJson } from './logging';
+import { GuessResult, ServerWSMessage, State, Topic } from './types';
+
+/** We use Spotify previews, which are 30 seconds long */
+export const TRACK_PLAY_LENGTH_SECS = 30;
 
 export interface Player {
     client: WebSocket;
@@ -11,8 +14,11 @@ export interface Player {
 
 export default class Room {
     id: string;
+
     players: Array<Player>;
+
     game: Game;
+
     timeouts: Array<NodeJS.Timeout>;
 
     constructor(id: string, playlist: Track[], database: TrackStore) {
@@ -26,13 +32,14 @@ export default class Room {
     sendAll(message: ServerWSMessage) {
         this.players.forEach((player) => this.sendMessage(player, message));
     }
+
     /** Send a message to a single player */
     sendMessage(player: Player, message: ServerWSMessage) {
-        const message_json: string = JSON.stringify(message, (_key, value) =>
+        const messageJson: string = JSON.stringify(message, (_key, value) =>
             value instanceof Map ? Object.fromEntries(value) : value
         );
-        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n${prettyJson(message_json)}`);
-        player.client.send(message_json);
+        logger.debug(`Message sent to player ${player.name} in room ${this.id}...\n${prettyJson(messageJson)}`);
+        player.client.send(messageJson);
     }
 
     /** Send the current leaderboard to all players */
@@ -49,14 +56,14 @@ export default class Room {
         this.players.push(player);
         this.game.enterPlayer(player.name);
         this.sendLeaderboard();
-        if (this.game.state != State.LOBBY) {
+        if (this.game.state !== State.LOBBY) {
             this.sendMessage(player, this.getGameConfigMessage());
         }
     }
 
     /** Delete player from room and label them "inactive" on the leaderboard */
     deletePlayer(player: Player) {
-        this.players = this.players.filter((p) => p != player);
+        this.players = this.players.filter((p) => p !== player);
         this.game.deactivatePlayer(player.name);
         this.sendLeaderboard();
     }
@@ -71,8 +78,8 @@ export default class Room {
     }
 
     setGameConfig(tracks_per_round: number, time_between_tracks: number) {
-        //Setting game config should only be done from the lobby
-        if (this.game.state != State.LOBBY) {
+        // Setting game config should only be done from the lobby
+        if (this.game.state !== State.LOBBY) {
             return;
         }
 
@@ -91,8 +98,8 @@ export default class Room {
      * before each round.
      */
     startRound() {
-        //Round should only start from lobby or between rounds
-        if (this.game.state != State.LOBBY && this.game.state != State.BETWEEN_ROUNDS) {
+        // Round should only start from lobby or between rounds
+        if (this.game.state !== State.LOBBY && this.game.state !== State.BETWEEN_ROUNDS) {
             return;
         }
 
@@ -114,24 +121,24 @@ export default class Room {
 
     /** Notify guesser of their correctness and update leaderboard if correct */
     processGuess(player: Player, guess: string, guess_epoch_millis: number) {
-        //Guesses can only be made while a track is playing
-        if (this.game.state != State.TRACK) {
+        // Guesses can only be made while a track is playing
+        if (this.game.state !== State.TRACK) {
             return;
         }
 
         const result = this.game.processGuess(player.name, guess, guess_epoch_millis);
         this.sendMessage(player, {
             topic: Topic.GUESS_RESULT,
-            result: result,
+            result,
         });
-        if (result != GuessResult.INCORRECT) {
+        if (result !== GuessResult.INCORRECT) {
             this.sendLeaderboard();
         }
     }
 
     /** Select a track to play (called one second before track plays) */
     selectTrack() {
-        //Send the next track to play
+        // Send the next track to play
         const track = this.game.nextTrack();
         this.sendAll({
             topic: Topic.TRACK_INFO,
@@ -140,41 +147,41 @@ export default class Room {
             title: track.title,
             aritsts: track.artists,
             track_number: this.game.current_track_number,
-            when_to_start: Date.now() + 1000, //now + 1
+            when_to_start: Date.now() + 1000, // now + 1
         });
 
-        //Set game state to TRACK once the track starts playing
+        // Set game state to TRACK once the track starts playing
         this.addTimeout(
-            1, //now + 1
+            1, // now + 1
             () => this.setGameState(State.TRACK)
         );
 
-        //Set game state to BETWEEN_TRACKS once the track ends
+        // Set game state to BETWEEN_TRACKS once the track ends
         this.addTimeout(
-            1 + TRACK_PLAY_LENGTH_SECS, //now + 1 + track
+            1 + TRACK_PLAY_LENGTH_SECS, // now + 1 + track
             () => this.setGameState(State.BETWEEN_TRACKS)
         );
 
-        //Update the leaderboard once the next track and subsequent wait period end
+        // Update the leaderboard once the next track and subsequent wait period end
         this.addTimeout(
-            1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + wait
+            1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, // now + 1 + track + wait
             () => {
                 this.game.endTrack();
                 this.sendLeaderboard();
             }
         );
 
-        //If round is not over, select another track one second before the next track plays
+        // If round is not over, select another track one second before the next track plays
         if (this.game.current_track_number < this.game.tracks_per_round!) {
             this.addTimeout(
-                TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + (wait-1)
+                TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, // now + 1 + track + (wait-1)
                 () => this.selectTrack()
             );
         }
-        //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
+        // If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
         else {
             this.addTimeout(
-                1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + wait
+                1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, // now + 1 + track + wait
                 () => this.setGameState(State.BETWEEN_ROUNDS)
             );
         }

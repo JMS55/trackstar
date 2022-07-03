@@ -1,102 +1,21 @@
-import winston, { format } from 'winston';
-import { Literal, Record, Union, Number, String } from 'runtypes';
+/* eslint-disable spaced-comment */
 import { Server, WebSocket } from 'ws';
-import TrackStore, { Track } from './data';
-import { GuessResult, State } from './game';
+import TrackStore from './data';
+import type { Track } from './data';
 import Room, { Player } from './room';
 import { fetchTracks } from './spotify';
-import { Standing } from './leaderboard';
-
-export const logger = winston.createLogger({
-    transports: [new winston.transports.Console()],
-    format: format.combine(
-        format.colorize(),
-        format.timestamp(),
-        format.align(),
-        format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}`)
-    ),
-    level: process.env.TS_LOG_LEVEL ?? 'debug',
-});
-
-/** We use Spotify previews, which are 30 seconds long */
-export const TRACK_PLAY_LENGTH_SECS = 30;
+import logger, { prettyJson } from './logging';
+import { ClientWSMessage, Topic } from './types';
 
 /** All games are this playlist (for now) */
 export const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
 
-/** Topics for server/client messages */
-export const enum Topic {
-    GAME_CONFIG = 'game_config',
-    TRACK_INFO = 'track_info',
-    GUESS_RESULT = 'guess_result',
-    LEADERBOARD = 'leaderboard',
-    START_GAME_COMMAND = 'start_game_command',
-    START_ROUND_COMMAND = 'start_round_command',
-    MAKE_GUESS_COMMAND = 'make_guess_command',
-}
-
 /////////////////////////////////////////////
 
-/** All Server -> Client messages */
-export type ServerWSMessage = WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
-
-/** Configuration of the room's game */
-interface WSGameConfig {
-    topic: Topic.GAME_CONFIG;
-    time_between_tracks: number;
-    tracks_per_round: number;
-    current_game_state: State;
+/** Delete any tracks that don't have a preview URL */
+function removeTracksWithNullURL(tracks: Track[]): Track[] {
+    return tracks.filter((t) => t.preview_url);
 }
-
-/** Info for the next track to be played */
-interface WSTrackInfo {
-    topic: Topic.TRACK_INFO;
-    url: string;
-    album_cover_url: string;
-    title: string;
-    aritsts: string[];
-    track_number: number;
-    when_to_start: number;
-}
-
-/** Correctness of player's guess */
-interface WSGuessResult {
-    topic: Topic.GUESS_RESULT;
-    result: GuessResult;
-}
-
-/** Leader board of the room's game */
-interface WSLeaderBoard {
-    topic: Topic.LEADERBOARD;
-    leaderboard: Map<string, Standing>;
-    host: string;
-}
-
-/////////////////////////////////////////////
-
-/** Command to start this room's game */
-const WSStartGame = Record({
-    topic: Literal(Topic.START_GAME_COMMAND),
-    tracks_per_round: Number,
-    time_between_tracks: Number,
-});
-
-/** Command to start another round */
-const WSStartRound = Record({
-    topic: Literal(Topic.START_ROUND_COMMAND),
-});
-
-/** A player making a guess */
-const WSMakeGuess = Record({
-    topic: Literal(Topic.MAKE_GUESS_COMMAND),
-    guess: String,
-    time_of_guess: Number,
-});
-
-/** All Client -> Server messages */
-export const ClientWSMessage = Union(WSStartGame, WSStartRound, WSMakeGuess);
-
-/////////////////////////////////////////////
 
 /** When client connects: create player, add player to room (create room first if it does not exist) */
 function handleNewConnection(
@@ -107,29 +26,30 @@ function handleNewConnection(
     request_url: string
 ): [Room, Player] {
     logger.debug(`Client connected with URL... ${request_url}`);
-    let [room_id, player_name] = request_url.split('/').slice(-2);
-    player_name = decodeURIComponent(player_name);
-    const new_player: Player = {
+    const sliced = request_url.split('/').slice(-2)[0];
+    const roomId = sliced[0];
+    const playerName = decodeURIComponent(sliced[1]);
+    const newPlayer: Player = {
         client: ws,
-        name: player_name,
+        name: playerName,
     };
     let room: Room;
-    if (rooms.has(room_id)) {
-        room = rooms.get(room_id)!;
+    if (rooms.has(roomId)) {
+        room = rooms.get(roomId)!;
     } else {
-        logger.debug(`Room ${room_id} has been created`);
-        room = new Room(room_id, tracks, data);
+        logger.debug(`Room ${roomId} has been created`);
+        room = new Room(roomId, tracks, data);
     }
-    rooms.set(room_id, room);
-    room.addPlayer(new_player);
-    return [room, new_player];
+    rooms.set(roomId, room);
+    room.addPlayer(newPlayer);
+    return [room, newPlayer];
 }
 
 /** When client disconnects: delete player, delete room if empty */
 function handleClosedConnection(rooms: Map<string, Room>, room: Room, player: Player) {
     logger.debug(`Player ${player.name} has left room ${room.id}`);
     room.deletePlayer(player);
-    if (room.players.length == 0) {
+    if (room.players.length === 0) {
         logger.debug(`Room ${room.id} has been deleted`);
         room.clearTimeouts();
         rooms.delete(room.id);
@@ -138,7 +58,7 @@ function handleClosedConnection(rooms: Map<string, Room>, room: Room, player: Pl
 
 /** Handle incoming message from client */
 function handleMessage(room: Room, player: Player, message_json: string) {
-    //Try parsing message JSON
+    // Try parsing message JSON
     let message;
     try {
         message = JSON.parse(message_json);
@@ -149,7 +69,7 @@ function handleMessage(room: Room, player: Player, message_json: string) {
         return;
     }
 
-    //Ensure message matches one of our defined formats
+    // Ensure message matches one of our defined formats
     if (!ClientWSMessage.guard(message)) {
         logger.error(
             `Message received from player ${player.name} for room ${
@@ -161,10 +81,14 @@ function handleMessage(room: Room, player: Player, message_json: string) {
 
     logger.debug(`Message received from player ${player.name} for room ${room.id}...\n${prettyJson(message_json)}`);
 
-    //Process message
+    // Process message
+    // Format is already checked above so it must be one of these
+    // eslint-disable-next-line default-case
     switch (message.topic) {
         case Topic.START_GAME_COMMAND:
-            room.setGameConfig(message.tracks_per_round, message.time_between_tracks); //Missing break is intentional
+            room.setGameConfig(message.tracks_per_round, message.time_between_tracks);
+        // no break is intentional
+        // eslint-disable-next-line no-fallthrough
         case Topic.START_ROUND_COMMAND:
             room.startRound();
             break;
@@ -174,56 +98,46 @@ function handleMessage(room: Room, player: Player, message_json: string) {
     }
 }
 
-/** Return pretty JSON string given any valid JSON string */
-export function prettyJson(input: string) {
-    return JSON.stringify(JSON.parse(input), null, 2);
-}
-
-/** Delete any tracks that don't have a preview URL */
-function removeTracksWithNullURL(tracks: Track[]): Track[] {
-    return tracks.filter((t) => t.preview_url);
-}
-
 async function main() {
-    //Open database, fetch songs
+    // Open database, fetch songs
     const data = new TrackStore();
     const config = data.getConfig()!;
 
     const args = process.argv.slice(2);
-    let playlist_id = DEFAULT_PLAYLIST;
+    let playlistId = DEFAULT_PLAYLIST;
     if (args.length >= 1) {
-        playlist_id = args[0];
+        [playlistId] = args;
     }
     logger.info('Retrieving songs from database.');
-    let tracks = removeTracksWithNullURL(data.getSongs(playlist_id));
-    if (tracks.length == 0) {
+    let tracks = removeTracksWithNullURL(data.getSongs(playlistId));
+    if (tracks.length === 0) {
         logger.warn('No tracks found in playlist. Will try to pull from spotify');
-        const res = await fetchTracks(playlist_id, config.spotify);
-        tracks = res[0];
+        const res = await fetchTracks(playlistId, config.spotify);
+        [tracks] = res;
         logger.info('Loading songs into database.');
-        data.loadSongs(playlist_id, res[0]);
+        data.loadSongs(playlistId, res[0]);
         if (res[1]) data.setConfig('spotify.accessToken', res[1]);
         if (res[2]) data.setConfig('spotify.refreshToken', res[2]);
-        if (tracks.length == 0) {
+        if (tracks.length === 0) {
             logger.error('No tracks loaded. Quitting.');
             return;
         }
     }
     logger.info('Ready to start.');
 
-    //Start server
+    // Start server
     const rooms = new Map();
     const wss = new Server({ port: config.ws_port.val });
     wss.on('connection', (ws, request) => {
         const [room, player] = handleNewConnection(rooms, tracks, data, ws, request.url!);
         ws.on('close', () => handleClosedConnection(rooms, room, player));
-        ws.on('message', (data) => handleMessage(room, player, data.toString()));
+        ws.on('message', (msg) => handleMessage(room, player, msg.toString()));
     });
     logger.info(`TrackStar server started on port ${config.ws_port.val}!`);
 }
 
 if (require.main === module) {
-    void main();
+    main();
 }
 
 export const forTests = {

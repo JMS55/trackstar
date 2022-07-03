@@ -1,8 +1,7 @@
 import { WebSocket } from 'ws';
 import TrackStore, { Track } from '../src/data';
-import { GuessResult, State } from '../src/game';
-import { Place, Progress, Standing } from '../src/leaderboard';
 import Room from '../src/room';
+import { GuessResult, Place, Progress, Standing, State } from '../src/types';
 
 const clientMock1 = {
     send: jest.fn(),
@@ -19,20 +18,19 @@ const processGuess = jest.fn();
 const resetLeaderboard = jest.fn();
 const nextTrack = jest.fn();
 
-jest.mock('../src/game', () => {
-    return jest.fn().mockImplementation((_, __) => {
-        return {
-            enterPlayer,
-            getActiveLeaderboard,
-            state: State.LOBBY,
-            setGameConfig,
-            processGuess,
-            resetLeaderboard,
-            nextTrack,
-            endTrack: jest.fn(),
-        };
-    });
-});
+jest.mock('../src/game', () =>
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    jest.fn().mockImplementation((_p, _d) => ({
+        enterPlayer,
+        getActiveLeaderboard,
+        state: State.LOBBY,
+        setGameConfig,
+        processGuess,
+        resetLeaderboard,
+        nextTrack,
+        endTrack: jest.fn(),
+    }))
+);
 
 const bareLeaderboard: Standing = {
     score: 0,
@@ -65,9 +63,7 @@ describe('lobby tests', () => {
     describe('adding 1 player sends them the leaderboard', () => {
         test('sends player leaderboard', () => {
             const expectedBoard = { player1: bareLeaderboard };
-            getActiveLeaderboard.mockImplementationOnce(() => {
-                return expectedBoard;
-            });
+            getActiveLeaderboard.mockImplementationOnce(() => expectedBoard);
 
             room.addPlayer(player1);
             expect(enterPlayer).toHaveBeenCalledWith(name1);
@@ -84,9 +80,7 @@ describe('lobby tests', () => {
     });
     test('Adding 2nd player sends both the leaderboard', () => {
         const expectedBoard = { player1: bareLeaderboard, player2: bareLeaderboard };
-        getActiveLeaderboard.mockImplementationOnce(() => {
-            return expectedBoard;
-        });
+        getActiveLeaderboard.mockImplementationOnce(() => expectedBoard);
 
         room.addPlayer(player2);
         const actual1 = JSON.parse(clientMock2.send.mock.calls[0][0]);
