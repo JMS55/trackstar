@@ -1,6 +1,6 @@
 import Spotify from 'spotify-web-api-node';
 import { logger } from './server';
-import TrackStore, { SpotifyConfig, TrackList } from './data';
+import TrackStore, { SpotifyConfig, Track } from './data';
 import fetch from 'node-fetch';
 import http from 'http';
 import { AbortSignal } from 'node-fetch/externals';
@@ -14,7 +14,7 @@ const WEB_SCRAPE_TIMEOUT = 500;
 const API_INSTANCE = new Spotify();
 
 /** Recursively get all tracks from the playlist with the given ID */
-async function pullTracks(playlist_id: string, offset = 0): Promise<TrackList> {
+async function pullTracks(playlist_id: string, offset = 0): Promise<Track[]> {
     //Get raw track data
     const data = await API_INSTANCE.getPlaylistTracks(playlist_id, {
         offset: offset,
@@ -30,7 +30,7 @@ async function pullTracks(playlist_id: string, offset = 0): Promise<TrackList> {
 
     //Convert to track objects and add to track array
     //const items = data.body.items;
-    const songItems: TrackList = data.body.items.map((item) => {
+    const songItems: Track[] = data.body.items.map((item) => {
         const track = item.track;
         const artists: string[] = track.artists.map((artist) => artist.name);
         const img = track.album.images[0].url;
@@ -57,7 +57,7 @@ async function pullTracks(playlist_id: string, offset = 0): Promise<TrackList> {
  * URL. Sometimes, though, the URL will still be missing or the request will
  * take too long, so we set a timeout and try/catch the whole process.
  */
-async function fillMissingUrls(tracks: TrackList): Promise<TrackList> {
+async function fillMissingUrls(tracks: Track[]): Promise<Track[]> {
     const trackProm = Promise.all(
         tracks.map(async (track) => {
             //Continue if track already has a preview URL
@@ -170,7 +170,7 @@ export function auth(data: TrackStore, client_id_param?: string, client_secret_p
 }
 
 /** Update tracks.json with the tracks from the given playlist */
-export async function fetchTracks(playlist_id: string, config: SpotifyConfig): Promise<[TrackList, string?, string?]> {
+export async function fetchTracks(playlist_id: string, config: SpotifyConfig): Promise<[Track[], string?, string?]> {
     if (!config.accessToken.val || !config.refreshToken.val || !config.clientId.val || !config.clientSecret.val) { 
         logger.error("Need to authenticate. run `npm run auth`");
         return [[]];

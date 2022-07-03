@@ -102,11 +102,11 @@ export default class TrackStore {
     /** Add songs to the database for a given playlist. Updates playlist table and junction table as well. 
      *  On error, returns false. Will either fully complete or not at all.
     */
-    loadSongs(playlist_id: string, tracks: TrackList): boolean {
+    loadSongs(playlist_id: string, tracks: Track[]): boolean {
         this.db.prepare(PLAYLIST_INSERT).run(playlist_id, { updated: new Date().getTime() });
         const songStmt = this.db.prepare(SONG_INSERT);
         const contentStmt = this.db.prepare(CONTENTS_INSERT); //TODO: check removed
-        const txn = this.db.transaction((tracks: TrackList) => {
+        const txn = this.db.transaction((tracks: Track[]) => {
             tracks.forEach((track) => {
                 try {
                     songStmt.run(
@@ -138,7 +138,7 @@ export default class TrackStore {
     updatePlays(song_id: string, data: RoundData): boolean {
         const stmt = this.db.prepare(SONGS_UPDATE);
         try {
-            stmt.run(data.title, data.artist, data.plays, song_id);
+            stmt.run(data.title || 0, data.artist || 0, data.plays || 0, song_id);
             logger.info(
                 `Added ${data.title} title guesses, ${data.artist} artist guesses, ${data.plays} plays to song ${song_id}`
             );
@@ -152,7 +152,7 @@ export default class TrackStore {
     /** Retrieve songs for a playlist. 
      *  On DB error, returns empty list
     */
-    getSongs(playlist_id: string): TrackList {
+    getSongs(playlist_id: string): Track[] {
         const stmt = this.db.prepare(SONGS_GET);
         let songs: Track[] = [];
 
@@ -288,7 +288,20 @@ export interface Track {
     artists: Array<string>;
 }
 
-export type TrackList = readonly Track[];
+export interface TrackList {
+    songs: Track[],
+    played: Set<Track>
+}
+
+
+/** Pick an unplayed song for the next track. */
+export function getRandomUnplayedTrack(list: TrackList) {
+    var track;
+    do {
+        track = list.songs[Math.floor(Math.random() * list.songs.length)];
+    } while (list.played.has(track));
+    return track;
+}
 
 /** Create database and tables.
  * DB filename is set in the environment variable DB_FILE or is 'data.db'.

@@ -1,6 +1,16 @@
 import { randomUUID } from 'crypto';
-import {Track, TrackStore} from '../src/data';
+import TrackStore, {Track} from '../src/data';
 
+
+global.console = {
+  ...console,
+  // uncomment to ignore a specific log level
+  log: jest.fn(),
+  debug: jest.fn(),
+  info: jest.fn(),
+  // warn: jest.fn(),
+  //error: jest.fn(),
+};
 
 describe('testing memory DB and tables', () => {
   test('new DB should have tables', () => {
@@ -71,6 +81,14 @@ describe('testing memory DB and tables', () => {
     expect(row.plays).toBe(1);
     expect(row.title_guessed).toBe(1);
     expect(row.artist_guessed).toBe(1);
+    db.updatePlays(songId, {
+      plays: 1,
+    });
+    const row2= stmt.get(songId);
+    expect(row2.plays).toBe(2);
+    expect(row2.title_guessed).toBe(1);
+    expect(row2.artist_guessed).toBe(1);
+
   });
 
   // test('functions return error correctly', () => {

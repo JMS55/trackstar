@@ -1,9 +1,11 @@
 import winston, { format } from 'winston';
+import { Literal, Record, Union, Number, String } from "runtypes";
 import { Server, WebSocket } from 'ws';
-import { Literal, Record, Union, Number, String } from 'runtypes';
-import { Game, State, GuessResult, Standing } from './game';
-import { TrackList, TrackStore } from './data';
+import TrackStore, { Track } from './data';
+import { GuessResult, State } from './game';
+import Room, { Player } from './room';
 import { fetchTracks } from './spotify';
+import { Standing } from './leaderboard';
 
 export const logger = winston.createLogger({
     transports: [new winston.transports.Console()],
@@ -17,13 +19,14 @@ export const logger = winston.createLogger({
 });
 
 /** We use Spotify previews, which are 30 seconds long */
-const TRACK_PLAY_LENGTH_SECS = 30;
+export const TRACK_PLAY_LENGTH_SECS = 30;
 
 /** All games are this playlist (for now) */
 export const DEFAULT_PLAYLIST = '5NeJXqMCPAspzrADl9ppKn';
 
+
 /** Topics for server/client messages */
-const enum Topic {
+export const enum Topic {
     GAME_CONFIG = 'game_config',
     TRACK_INFO = 'track_info',
     GUESS_RESULT = 'guess_result',
@@ -36,7 +39,7 @@ const enum Topic {
 /////////////////////////////////////////////
 
 /** All Server -> Client messages */
-type ServerWSMessage = WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
+export type ServerWSMessage = WSGameConfig | WSTrackInfo | WSGuessResult | WSLeaderBoard;
 
 /** Configuration of the room's game */
 interface WSGameConfig {
@@ -92,197 +95,14 @@ const WSMakeGuess = Record({
 });
 
 /** All Client -> Server messages */
-const ClientWSMessage = Union(WSStartGame, WSStartRound, WSMakeGuess);
+export const ClientWSMessage = Union(WSStartGame, WSStartRound, WSMakeGuess);
 
 /////////////////////////////////////////////
-
-interface Player {
-    client: WebSocket;
-    name: string;
-    room: string;
-}
-
-export class Room {
-    id: string;
-    players: Array<Player>;
-    playlist: TrackList;
-    database: TrackStore;
-    game: Game;
-    timeouts: Array<NodeJS.Timeout>;
-
-    constructor(id: string, playlist: TrackList, database: TrackStore) {
-        this.id = id;
-        this.players = [];
-        this.game = new Game(this);
-        this.playlist = playlist;
-        this.database = database;
-        this.timeouts = [];
-    }
-
-    /** Send a message to all players */
-    sendAll(message: ServerWSMessage) {
-        this.players.forEach((player) => sendMessage(player, message));
-    }
-
-    /** Send the current leaderboard to all players */
-    sendLeaderboard() {
-        this.sendAll({
-            topic: Topic.LEADERBOARD,
-            leaderboard: this.game.getActiveLeaderboard(),
-            host: this.players[0].name,
-        });
-    }
-
-    /** Add player (back) to room, restoring previous standing if previously disconnected */
-    addPlayer(player: Player) {
-        this.players.push(player);
-        this.game.enterPlayer(player.name);
-        this.sendLeaderboard();
-        if (this.game.state != State.LOBBY) {
-            sendMessage(player, this.getGameConfigMessage());
-        }
-    }
-
-    /** Delete player from room and label them "inactive" on the leaderboard */
-    deletePlayer(player: Player) {
-        this.players = this.players.filter((p) => p != player);
-        this.game.deactivatePlayer(player.name);
-        this.sendLeaderboard();
-    }
-
-    getGameConfigMessage(): WSGameConfig {
-        return {
-            topic: Topic.GAME_CONFIG,
-            time_between_tracks: this.game.secs_between_tracks!,
-            tracks_per_round: this.game.tracks_per_round!,
-            current_game_state: this.game.state!,
-        };
-    }
-
-    setGameConfig(tracks_per_round: number, time_between_tracks: number) {
-        //Setting game config should only be done from the lobby
-        if (this.game.state != State.LOBBY) {
-            return;
-        }
-
-        this.game.setGameConfig(tracks_per_round, time_between_tracks);
-        this.sendAll(this.getGameConfigMessage());
-    }
-
-    setGameState(state: State) {
-        logger.debug(`Game state of room ${this.id} is now ${State[state]}`);
-        this.game.state = state;
-    }
-
-    /**
-     * Start a round, in which multiple tracks are played. After all tracks are
-     * played, the room creator can start a new round. The leaderboard is reset
-     * before each round.
-     */
-    startRound() {
-        //Round should only start from lobby or between rounds
-        if (this.game.state != State.LOBBY && this.game.state != State.BETWEEN_ROUNDS) {
-            return;
-        }
-
-        this.setGameState(State.BETWEEN_TRACKS);
-        this.game.resetLeaderboard();
-        this.sendLeaderboard();
-        this.selectTrack();
-    }
-
-    /** Start a timeout and keep track of its existence */
-    addTimeout(delay_secs: number, callback: () => void) {
-        this.timeouts.push(setTimeout(callback, delay_secs * 1000));
-    }
-
-    /** Clear every timeout that has ever been started for this room */
-    clearTimeouts() {
-        this.timeouts.forEach((timeout) => clearTimeout(timeout));
-    }
-
-    /** Notify guesser of their correctness and update leaderboard if correct */
-    processGuess(player: Player, guess: string, guess_epoch_millis: number) {
-        //Guesses can only be made while a track is playing
-        if (this.game.state != State.TRACK) {
-            return;
-        }
-
-        const result = this.game.processGuess(player.name, guess, guess_epoch_millis);
-        sendMessage(player, {
-            topic: Topic.GUESS_RESULT,
-            result: result,
-        });
-        if (result != GuessResult.INCORRECT) {
-            this.sendLeaderboard();
-        }
-    }
-
-    /** Select a track to play (called one second before track plays) */
-    selectTrack() {
-        //Send the next track to play
-        const track = this.game.nextTrack();
-        this.sendAll({
-            topic: Topic.TRACK_INFO,
-            url: track.preview_url!,
-            album_cover_url: track.image_url,
-            title: track.title,
-            aritsts: track.artists,
-            track_number: this.game.current_track_number,
-            when_to_start: Date.now() + 1000, //now + 1
-        });
-
-        //Set game state to TRACK once the track starts playing
-        this.addTimeout(
-            1, //now + 1
-            () => this.setGameState(State.TRACK)
-        );
-
-        //Set game state to BETWEEN_TRACKS once the track ends
-        this.addTimeout(
-            1 + TRACK_PLAY_LENGTH_SECS, //now + 1 + track
-            () => this.setGameState(State.BETWEEN_TRACKS)
-        );
-
-        //Update the leaderboard once the next track and subsequent wait period end
-        this.addTimeout(
-            1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + wait
-            () => {
-                this.game.endTrack();
-                this.sendLeaderboard();
-            }
-        );
-
-        //If round is not over, select another track one second before the next track plays
-        if (this.game.current_track_number < this.game.tracks_per_round!) {
-            this.addTimeout(
-                TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + (wait-1)
-                () => this.selectTrack()
-            );
-        }
-        //If round is over, set game state to BETWEEN_ROUNDS once track and subsequent wait period end
-        else {
-            this.addTimeout(
-                1 + TRACK_PLAY_LENGTH_SECS + this.game.secs_between_tracks!, //now + 1 + track + wait
-                () => this.setGameState(State.BETWEEN_ROUNDS)
-            );
-        }
-    }
-}
-
-/** Send a message to a single player */
-function sendMessage(player: Player, message: ServerWSMessage) {
-    const message_json: string = JSON.stringify(message, (_key, value) =>
-        value instanceof Map ? Object.fromEntries(value) : value
-    );
-    logger.debug(`Message sent to player ${player.name} in room ${player.room}...\n${prettyJson(message_json)}`);
-    player.client.send(message_json);
-}
 
 /** When client connects: create player, add player to room (create room first if it does not exist) */
 function handleNewConnection(
     rooms: Map<string, Room>,
-    tracks: TrackList,
+    tracks: Track[],
     data: TrackStore,
     ws: WebSocket,
     request_url: string
@@ -292,8 +112,7 @@ function handleNewConnection(
     player_name = decodeURIComponent(player_name);
     const new_player: Player = {
         client: ws,
-        name: player_name,
-        room: room_id,
+        name: player_name
     };
     let room: Room;
     if (rooms.has(room_id)) {
@@ -357,12 +176,12 @@ function handleMessage(room: Room, player: Player, message_json: string) {
 }
 
 /** Return pretty JSON string given any valid JSON string */
-function prettyJson(input: string) {
+export function prettyJson(input: string) {
     return JSON.stringify(JSON.parse(input), null, 2);
 }
 
 /** Delete any tracks that don't have a preview URL */
-function removeTracksWithNullURL(tracks: TrackList): TrackList {
+function removeTracksWithNullURL(tracks: Track[]): Track[] {
     return tracks.filter((t) => t.preview_url);
 }
 
@@ -406,5 +225,8 @@ async function main() {
 
 if (require.main === module) {
     void main();
-  }
+}
 
+export const forTests = {
+    handleMessage
+}
