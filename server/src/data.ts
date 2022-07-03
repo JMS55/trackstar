@@ -151,7 +151,7 @@ export interface RoundData {
  *  -- foreign keys
  */
 function openDB(db_file?: string) {
-    const dbPath = db_file || process.env.DB_FILE || 'data.db';
+    const dbPath = db_file || process.env.DB_FILE || 'data/data.db';
 
     logger.info('Opening database.');
     const db = new Sqlite3(dbPath, {});

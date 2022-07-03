@@ -3,3 +3,4 @@ bin
 tracks.json
 coverage
 *.db
+data
