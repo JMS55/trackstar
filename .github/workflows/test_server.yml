@@ -75,12 +75,12 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Build and push (non-master)
-        if: ${{ env.GITHUB_REF_NAME != 'master' }}
+        if: ${{ github.ref_name != 'master' }}
         uses: docker/build-push-action@v3
         with:
           context: ./server
           push: true
-          tags: '${{ secrets.DOCKERHUB_USERNAME }}/trackstar:${{ env.GITHUB_SHA }}'
+          tags: 'drp19/trackstar:${{ github.sha }}'
       -
         name: Build and push to latest
         if: ${{ env.GITHUB_REF_NAME == 'master' }}
@@ -89,5 +89,5 @@ jobs:
           context: ./server
           push: true
           tags: |
-            - ${{ secrets.DOCKERHUB_USERNAME }}/trackstar:latest
-            - '${{ secrets.DOCKERHUB_USERNAME }}/trackstar:${{ env.GITHUB_SHA }}'
+            - drp19/trackstar:latest
+            - 'drp19/trackstar:${{ github.sha }}'
