@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_svg: ^1.1.0
+  flutter_svg: ^1.1.1+1
   flutter_countdown_timer: ^4.1.0
   dynamic_color: ^1.4.0
   audioplayers: ^1.0.0-rc.4
@@ -28,7 +28,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_launcher_icons: ^0.9.3
-  build_runner: ^2.1.0
+  build_runner: ^2.1.11
   json_serializable: ^6.2.0
 
   flutter_lints: ^2.0.1
