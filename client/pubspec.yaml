@@ -14,7 +14,7 @@ dependencies:
   flutter_svg: ^1.1.1+1
   flutter_countdown_timer: ^4.1.0
   dynamic_color: ^1.4.0
-  audioplayers: ^1.0.0-rc.4
+  audioplayers: ^1.0.1
   web_socket_channel: ^2.2.0
   json_annotation: ^4.5.0
 
