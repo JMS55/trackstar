@@ -310,11 +310,12 @@ function handleNewConnection(
 /** When client disconnects: delete player, delete room if empty */
 function handleClosedConnection(rooms: Map<string, Room>, room: Room, player: Player) {
     logger.debug(`Player ${player.name} has left room ${room.id}`);
-    room.deletePlayer(player);
-    if (room.players.length == 0) {
+    if (room.players.length == 1) {
         logger.debug(`Room ${room.id} has been deleted`);
         room.clearTimeouts();
         rooms.delete(room.id);
+    } else {
+        room.deletePlayer(player);
     }
 }
 
