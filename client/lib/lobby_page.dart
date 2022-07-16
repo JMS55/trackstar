@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'widgets.dart';
 import 'trackstar_service.dart';
 import 'game_page.dart';
@@ -8,12 +9,10 @@ class LobbyPage extends StatefulWidget {
     Key? key,
     this.roomId,
     required this.username,
-    required this.isRoomCreator,
   }) : super(key: key);
 
   final int? roomId;
   final String username;
-  final bool isRoomCreator;
 
   @override
   State<LobbyPage> createState() => _LobbyPageState();
@@ -62,48 +61,54 @@ class _LobbyPageState extends State<LobbyPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Card(
-                      elevation: 0,
-                      color: Theme.of(context).colorScheme.surfaceVariant,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: ListView.separated(
-                          itemCount: trackStarService.leaderboard.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            String username = trackStarService.leaderboard.keys
-                                .elementAt(index);
-                            return ListTile(
-                              leading: AvatarCircle(username: username),
-                              title: Text(username),
-                              subtitle: username == trackStarService.userName
-                                  ? const Text('You')
-                                  : null,
-                              visualDensity: VisualDensity.compact,
-                            );
-                          },
-                          separatorBuilder: (BuildContext context, int index) =>
-                              const Divider(),
-                          shrinkWrap: true,
+                trackStarService.leaderboard.isNotEmpty
+                    ? Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Card(
+                            elevation: 0,
+                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: ListView.separated(
+                                  itemCount:
+                                      trackStarService.leaderboard.length,
+                                  itemBuilder:
+                                      (BuildContext context, int index) {
+                                    String username = trackStarService
+                                        .leaderboard.keys
+                                        .elementAt(index);
+                                    return ListTile(
+                                      leading: AvatarCircle(username: username),
+                                      title: Text(username),
+                                      subtitle:
+                                          username == trackStarService.userName
+                                              ? const Text('You')
+                                              : null,
+                                      visualDensity: VisualDensity.compact,
+                                    );
+                                  },
+                                  separatorBuilder:
+                                      (BuildContext context, int index) =>
+                                          const Divider(),
+                                  shrinkWrap: true,
+                                )),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
+                      )
+                    : Column()
               ],
             ),
           ),
         ),
-        floatingActionButton:
-            widget.isRoomCreator || (trackStarService.firstIntoRoom ?? false)
-                ? FloatingActionButton.extended(
-                    onPressed: startGame,
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: const Text('Start Game'),
-                  )
-                : null,
+        floatingActionButton: trackStarService.host == widget.username
+            ? FloatingActionButton.extended(
+                onPressed: startGame,
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Start Game'),
+              )
+            : null,
       ),
     );
   }
@@ -130,8 +135,14 @@ class _LobbyPageState extends State<LobbyPage> {
     trackStarService = TrackStarService(
       roomId: widget.roomId,
       userName: widget.username,
-      changeSignal: setState,
+      changeSignal: (_) => setState(() {
+        if (trackStarService.leaderboard.isNotEmpty) {
+          EasyLoading.dismiss();
+        }
+      }),
     );
+
+    EasyLoading.show(status: 'Loading...');
 
     super.initState();
   }

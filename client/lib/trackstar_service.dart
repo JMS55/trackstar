@@ -18,6 +18,9 @@ class TrackStarService {
   int roomId = -1;
   String userName;
 
+  Map<String, Standing> leaderboard = {};
+  String host = '';
+
   GameState gameState = GameState.initial;
   int trackNumber = -1;
   int tracksPerRound = -1;
@@ -27,12 +30,10 @@ class TrackStarService {
   bool guessedTitle = false;
   bool guessedArtist = false;
   bool? lastGuessCorrect;
-  Map<String, Standing> leaderboard = {};
-  bool? firstIntoRoom;
 
-  String trackTitle = "";
+  String trackTitle = '';
   List<String> trackArtists = [];
-  String albumCoverUrl = "";
+  String albumCoverUrl = '';
 
   TrackStarService({
     int? roomId,
@@ -40,15 +41,6 @@ class TrackStarService {
     required this.changeSignal,
   }) {
     this.roomId = roomId ?? Random().nextInt(9999);
-
-    audioPlayer.onPlayerComplete.listen((_) {
-      gameState = GameState.betweenTracks;
-
-      guessedTitle = false;
-      guessedArtist = false;
-
-      signalChange();
-    });
 
     ws = WebSocketChannel.connect(Uri.parse(
       'wss://trackstar.ml/ws/${this.roomId}/$userName',
@@ -68,6 +60,15 @@ class TrackStarService {
       if (topic == LeaderBoardMessage.topic) {
         handleLeaderBoard(LeaderBoardMessage.fromJson(msg));
       }
+    });
+
+    audioPlayer.onPlayerComplete.listen((_) {
+      gameState = GameState.betweenTracks;
+
+      guessedTitle = false;
+      guessedArtist = false;
+
+      signalChange();
     });
   }
 
@@ -146,11 +147,7 @@ class TrackStarService {
 
   void handleLeaderBoard(LeaderBoardMessage msg) {
     leaderboard = msg.leaderboard;
-
-    firstIntoRoom ??= leaderboard.length == 1;
-    if (firstIntoRoom == false && leaderboard.length == 1) {
-      firstIntoRoom = true;
-    }
+    host = msg.host;
 
     signalChange();
   }
@@ -249,9 +246,10 @@ class GuessResultMessage {
 @JsonSerializable(fieldRename: FieldRename.snake)
 class LeaderBoardMessage {
   static const String topic = 'leaderboard';
-  Map<String, Standing> leaderboard;
+  final Map<String, Standing> leaderboard;
+  final String host;
 
-  LeaderBoardMessage(this.leaderboard);
+  LeaderBoardMessage(this.leaderboard, this.host);
   factory LeaderBoardMessage.fromJson(Map<String, dynamic> json) =>
       _$LeaderBoardMessageFromJson(json);
   Map<String, dynamic> toJson() => _$LeaderBoardMessageToJson(this);

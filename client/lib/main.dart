@@ -1,6 +1,7 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'home_page.dart';
 
 void main() {
@@ -36,6 +37,7 @@ class _AppState extends State<App> {
                   seedColor: const Color.fromARGB(255, 102, 80, 164),
                 ),
           ),
+          builder: EasyLoading.init(),
         );
       }),
     );

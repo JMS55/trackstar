@@ -59,7 +59,6 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
         builder: (context) => LobbyPage(
           roomId: int.parse(roomIdController.text),
           username: widget.usernameController.text,
-          isRoomCreator: false,
         ),
       ),
     );
