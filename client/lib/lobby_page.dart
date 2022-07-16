@@ -24,10 +24,6 @@ class _LobbyPageState extends State<LobbyPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (trackStarService.trackNumber != -1 && !navigatedToGamePage) {
-      Future.delayed(Duration.zero, () => navigateToGamePage());
-    }
-
     return RoomLeaveConfirmationDialog(
       child: Scaffold(
         appBar: AppBar(title: const Text('Lobby')),
@@ -138,6 +134,10 @@ class _LobbyPageState extends State<LobbyPage> {
       changeSignal: (_) => setState(() {
         if (trackStarService.leaderboard.isNotEmpty) {
           EasyLoading.dismiss();
+        }
+
+        if (trackStarService.trackNumber != -1 && !navigatedToGamePage) {
+          navigateToGamePage();
         }
       }),
     );
