@@ -47,7 +47,7 @@ export default class Room {
         this.sendAll({
             topic: Topic.LEADERBOARD,
             leaderboard: this.game.getActiveLeaderboard(),
-            host: this.players[0].name,
+            host: this.players[0]?.name, // if this is null, no messages actually will be sent
         });
     }
 

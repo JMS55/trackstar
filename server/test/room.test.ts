@@ -29,6 +29,7 @@ jest.mock('../src/game', () =>
         resetLeaderboard,
         nextTrack,
         endTrack: jest.fn(),
+        deactivatePlayer: jest.fn(),
     }))
 );
 
@@ -179,6 +180,28 @@ describe('In game tests', () => {
                 expect(clientMock1.send).toHaveBeenCalledWith(expect.stringContaining('guess_result'));
                 expect(clientMock1.send).not.toHaveBeenCalledWith(expect.stringContaining('leaderboard'));
                 expect(clientMock2.send).not.toHaveBeenCalledWith(expect.stringContaining('leaderboard'));
+            });
+        });
+    });
+
+    describe('Can remove players', () => {
+        beforeEach(() => {
+            jest.clearAllMocks();
+        });
+        describe('Removing player 1', () => {
+            test('Sends leaderboard and removes player', () => {
+                room.deletePlayer(player1);
+                expect(clientMock1.send).not.toHaveBeenCalledWith(expect.stringContaining('leaderboard'));
+                expect(clientMock2.send).toHaveBeenCalledWith(expect.stringContaining('leaderboard'));
+                expect(room.players.length).toEqual(1);
+            });
+        });
+        describe('Removing player 2', () => {
+            test('Removes second player and does not send any leaderboard', () => {
+                room.deletePlayer(player2);
+                expect(clientMock1.send).not.toHaveBeenCalledWith(expect.stringContaining('leaderboard'));
+                expect(clientMock2.send).not.toHaveBeenCalledWith(expect.stringContaining('leaderboard'));
+                expect(room.players.length).toEqual(0);
             });
         });
     });
