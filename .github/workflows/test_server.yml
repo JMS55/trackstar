@@ -87,7 +87,7 @@ jobs:
           tags: 'drp19/trackstar:${{ github.sha }}'
       -
         name: Build and push to latest
-        if: ${{ env.GITHUB_REF_NAME == 'master' }}
+        if: ${{ github.ref_name == 'master' }}
         uses: docker/build-push-action@v3
         with:
           context: ./server
