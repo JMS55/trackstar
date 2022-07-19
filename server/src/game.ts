@@ -1,84 +1,43 @@
-import type { Track } from './data';
-import { Room } from './server';
+import { getRandomUnplayedTrack, RoundData, Track, TrackList } from './data';
+import Leaderboard from './leaderboard';
+import { GuessResult, Progress, Standing, State } from './types';
 import { isCorrectTitle, isCorrectArtist } from './validation';
 
-/** Game state */
-export enum State {
-    LOBBY,
-    TRACK,
-    BETWEEN_TRACKS,
-    BETWEEN_ROUNDS,
-}
-
-/** What a player has gotten correct so far */
-const enum Progress {
-    TITLE = 'correct_title',
-    ARTIST = 'correct_artist',
-    BOTH = 'both_correct',
-    NONE = 'none_correct',
-}
-
-/** Podium for who got both the title and artist in what order */
-const enum Place {
-    FIRST = 'first',
-    SECOND = 'second',
-    THIRD = 'third',
-    NONE = 'none',
-}
-
-/** The result of attempting to validate a guess */
-export const enum GuessResult {
-    TITLE = 'correct_title',
-    ARTIST = 'correct_artist',
-    INCORRECT = 'incorrect', //Includes case when player guesses something they already got right
-}
-
-/** Leaderboard info for a specific player */
-export interface Standing {
-    score: number;
-    points_from_current_track: number;
-    progress: Progress;
-    place: Place;
-    active: boolean;
-}
-
-/** Marker for the time a player gets both title and artist */
-interface Completion {
-    player: string;
-    time: number;
-}
-
-/** Store round guess information for analytics */
-export interface RoundData {
-    plays: number;
-    title: number;
-    artist: number;
-}
-
 /** A game contains rounds, which in turn contain tracks */
-export class Game {
-    room: Room;
+export default class Game {
     state: State;
-    tracks_per_round: number | null;
-    secs_between_tracks: number | null;
-    current_track: Track | null;
-    current_track_number: number;
-    played_tracks: Set<Track>;
-    leaderboard: Map<string, Standing>;
-    completions: Array<Completion>;
-    round_data: RoundData;
 
-    constructor(room: Room) {
-        this.room = room;
+    tracks_per_round: number | null;
+
+    secs_between_tracks: number | null;
+
+    private current_track: Track | null;
+
+    current_track_number: number;
+
+    private playlist: TrackList;
+
+    private leaderboard: Leaderboard;
+
+    private updateRoundData: (i: string, d: RoundData) => boolean;
+
+    constructor(playlist: Track[], updateRoundData: (i: string, d: RoundData) => boolean) {
         this.state = State.LOBBY;
         this.tracks_per_round = null;
         this.secs_between_tracks = null;
         this.current_track = null;
         this.current_track_number = 0;
-        this.round_data = { plays: 0, title: 0, artist: 0 };
-        this.played_tracks = new Set();
-        this.leaderboard = new Map();
-        this.completions = [];
+        this.playlist = { songs: playlist, played: new Set() };
+        this.leaderboard = new Leaderboard();
+        this.updateRoundData = updateRoundData;
+    }
+
+    getActiveLeaderboard(): Map<string, Standing> {
+        return this.leaderboard.getActive();
+    }
+
+    resetLeaderboard() {
+        this.leaderboard.resetLeaderboard();
     }
 
     setGameConfig(tracks_per_round: number, secs_between_tracks: number) {
@@ -88,140 +47,64 @@ export class Game {
 
     /** Add new player to leaderboard or reactivate inactive player */
     enterPlayer(player: string) {
-        const standing = this.leaderboard.get(player);
+        const standing = this.leaderboard.getPlayer(player);
         if (standing) {
             standing.active = true;
         } else {
-            this.leaderboard.set(player, {
-                score: 0,
-                points_from_current_track: 0,
-                progress: Progress.NONE,
-                place: Place.NONE,
-                active: true,
-            });
+            this.leaderboard.addPlayer(player);
         }
     }
 
     /** Label player as inactive when they leave the room */
     deactivatePlayer(player: string) {
-        this.leaderboard.get(player)!.active = false;
-    }
-
-    /** Reset a player's standing */
-    resetPlayer(player: string) {
-        const standing = this.leaderboard.get(player)!;
-        standing.score = 0;
-        standing.points_from_current_track = 0;
-        standing.progress = Progress.NONE;
-        standing.place = Place.NONE;
-    }
-
-    /** Get the leaderboard with only active players included */
-    getActiveLeaderboard(): Map<string, Standing> {
-        return new Map([...this.leaderboard].filter(([_player, standing]) => standing.active));
-    }
-
-    /** Reset the standings of all players in the leaderboard */
-    resetLeaderboard() {
-        for (const player in this.leaderboard) {
-            this.resetPlayer(player);
-        }
+        this.leaderboard.getPlayer(player)!.active = false;
     }
 
     /** Switch to and return a new track (which has not already been played) */
     nextTrack(): Track {
-        const track = this.getRandomUnplayedTrack();
+        const track = getRandomUnplayedTrack(this.playlist);
         this.current_track = track;
-        this.current_track_number++;
-        this.played_tracks.add(track);
+        this.current_track_number += 1;
+        this.playlist.played.add(track);
         return track;
     }
 
     /** Validate a player's guess, update the leaderboard, and return the validation result */
     processGuess(player: string, guess: string, time: number): GuessResult {
-        const standing = this.leaderboard.get(player)!;
-        const progress = standing.progress;
+        const standing = this.leaderboard.getPlayer(player)!;
+        const { progress } = standing;
 
-        //Validate guess
+        // Validate guess
         let result;
-        if (progress == Progress.BOTH) {
+        if (progress === Progress.BOTH) {
             return GuessResult.INCORRECT;
-        } else if (progress != Progress.TITLE && isCorrectTitle(this.current_track!, guess)) {
+        }
+        if (progress !== Progress.TITLE && isCorrectTitle(this.current_track!, guess)) {
             result = GuessResult.TITLE;
-            this.round_data.title++;
-        } else if (progress != Progress.ARTIST && isCorrectArtist(this.current_track!, guess)) {
+            this.updateRoundData(this.current_track!.id, { title: 1 });
+        } else if (progress !== Progress.ARTIST && isCorrectArtist(this.current_track!, guess)) {
             result = GuessResult.ARTIST;
-            this.round_data.artist++;
+            this.updateRoundData(this.current_track!.id, { artist: 1 });
         } else {
             return GuessResult.INCORRECT;
         }
-
-        //Update leaderboard
-        standing.points_from_current_track++;
-        if (progress == Progress.NONE) {
-            //Player has either title or artist correct now
-            standing.progress = result == GuessResult.TITLE ? Progress.TITLE : Progress.ARTIST;
-            standing.points_from_current_track = 1;
+        let newProgress;
+        // Update leaderboard
+        if (progress === Progress.NONE) {
+            // Player has either title or artist correct now
+            newProgress = result === GuessResult.TITLE ? Progress.TITLE : Progress.ARTIST;
         } else {
-            //Player has both title and artist correct now
-            standing.progress = Progress.BOTH;
-            this.addCompletion(player, time);
+            // Player has both title and artist correct now
+            newProgress = Progress.BOTH;
         }
+        this.leaderboard.updatePlayerRound(player, newProgress, time);
 
         return result;
     }
 
-    /** Update leaderboard when a player has just gotten title and artist */
-    addCompletion(player: string, time: number) {
-        this.completions.push({ player: player, time: time });
-        this.completions.sort((a, b) => a.time - b.time);
-        this.completions
-            .filter((completion) => this.leaderboard.get(completion.player)!.active)
-            .forEach((completion, index) => {
-                let place, points_from_current_track;
-                switch (index) {
-                    case 0:
-                        place = Place.FIRST;
-                        points_from_current_track = 6;
-                        break;
-                    case 1:
-                        place = Place.SECOND;
-                        points_from_current_track = 5;
-                        break;
-                    case 2:
-                        place = Place.THIRD;
-                        points_from_current_track = 4;
-                        break;
-                    default:
-                        place = Place.NONE;
-                        points_from_current_track = 2;
-                }
-                const standing = this.leaderboard.get(completion.player)!;
-                standing.place = place;
-                standing.points_from_current_track = points_from_current_track;
-            });
-    }
-
     /** Add points from current track to scores and reset completions */
     endTrack() {
-        this.leaderboard.forEach((standing) => {
-            standing.score += standing.points_from_current_track;
-            standing.points_from_current_track = 0;
-            standing.progress = Progress.NONE;
-            standing.place = Place.NONE;
-        });
-        this.completions = [];
-        this.round_data.plays = this.leaderboard.size;
-        this.room.database.updatePlays(this.current_track!.id, this.round_data);
-        this.round_data = { plays: 0, title: 0, artist: 0 };
-    }
-
-    /** Pick an unplayed song for the next track. */
-    getRandomUnplayedTrack() {
-        var track;
-        do {
-            track = this.room.playlist[Math.floor(Math.random() * this.room.playlist.length)];
-        } while (this.played_tracks.has(track));
-        return track;
+        this.leaderboard.endRound();
+        this.updateRoundData(this.current_track!.id, { plays: this.leaderboard.getActive().size });
     }
 }

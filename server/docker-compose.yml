@@ -1,0 +1,9 @@
+version: "3"
+services:
+  serv:
+    image: drp19/trackstar:latest
+    container_name: trackstar
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/:/app/data/

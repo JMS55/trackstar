@@ -1,6 +1,6 @@
-import sqlite3, { Database } from 'better-sqlite3';
-import { RoundData } from './game';
-import { logger } from './server';
+/* eslint-disable spaced-comment */
+import Sqlite3, { Database } from 'better-sqlite3';
+import logger from './logging';
 
 // SQL statements
 /////////////
@@ -58,6 +58,20 @@ FOREIGN KEY (song_id) REFERENCES songs (song_id)
     ON UPDATE CASCADE
     ON DELETE CASCADE);`;
 
+const CONFIG_CREATE = `
+CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT);`;
+
+const GET_CONFIG = `
+SELECT value FROM config WHERE key = ?;`;
+
+const GET_ALL_CONFIG = `
+SELECT key, value FROM config;`;
+
+const SET_CONFIG = `
+INSERT OR REPLACE INTO config (key, value) VALUES (?,?);`;
+
 const V1_ALTERS = [
     `ALTER TABLE songs 
 ADD COLUMN plays INT NOT NULL DEFAULT 0;`,
@@ -68,20 +82,138 @@ ADD COLUMN title_guessed INT NOT NULL DEFAULT 0;`,
 
 ////////////////
 
-export class TrackStore {
-    private readonly db: Database;
+export interface Config {
+    ws_port: ConfigValue<number>;
+    auth_callback_addr: ConfigValue<string>; // INCLUDES PORT!!
+    auth_callback_port: ConfigValue<number>;
+    spotify: SpotifyConfig;
+}
 
-    constructor() {
-        this.db = open_db();
+export interface SpotifyConfig {
+    accessToken: ConfigValue<string | null>;
+    clientId: ConfigValue<string | null>;
+    clientSecret: ConfigValue<string | null>;
+    refreshToken: ConfigValue<string | null>;
+}
+
+export type ConfigValue<T> = { val: T; default?: true };
+
+function enforceNum(val: string | undefined): number | null {
+    if (!val) {
+        return null;
+    }
+    const num = parseFloat(val);
+    return Number.isNaN(num) ? null : num;
+}
+
+function configify<T>(val: T | undefined | null): ConfigValue<T | null>;
+function configify<T>(val: T | undefined | null, def: T): ConfigValue<T>;
+function configify<T>(val: T | undefined | null, def?: T): ConfigValue<T> | ConfigValue<T | null> {
+    if (!val && def) {
+        return {
+            val: def,
+            default: true,
+        };
+    }
+    return {
+        val: val as T | null,
+    };
+}
+
+export interface Track {
+    id: string;
+    preview_url: string | null;
+    image_url: string;
+    title: string;
+    artists: Array<string>;
+}
+
+export interface TrackList {
+    songs: Track[];
+    played: Set<Track>;
+}
+
+/** Store round guess information for analytics */
+export interface RoundData {
+    plays?: number;
+    title?: number;
+    artist?: number;
+}
+
+////////////////
+
+/** Create database and tables.
+ * DB filename is set in the environment variable DB_FILE or is 'data.db'.
+ * SONGS table: song_id, preview_url, img_url, title, artists, add_time, plays, title_guessed, artist_guessed
+ * PLAYLISTS table: playlist_id, last_updated
+ * CONTENTS: playlist_id, song_id
+ * CONFIG: key, value
+ *  -- foreign keys
+ */
+function openDB(db_file?: string) {
+    const dbPath = db_file || process.env.DB_FILE || 'data/data.db';
+
+    logger.info('Opening database.');
+    const db = new Sqlite3(dbPath, {});
+
+    const trans = db.transaction(() => {
+        db.pragma('foreign_keys = ON;');
+        db.exec(SONGS_CREATE);
+        db.exec(PLAYLIST_CREATE);
+        db.exec(CONTENTS_CREATE);
+        db.exec(CONFIG_CREATE);
+        db.pragma('user_version = 2;');
+    });
+    trans();
+
+    const ver = db.pragma('user_version', { simple: true });
+    if (ver < 1) {
+        logger.info('Migrating database to version 1 (plays tracking)');
+        const migrateTrans = db.transaction(() => {
+            V1_ALTERS.forEach((alter) => db.exec(alter));
+            db.pragma('user_version = 1;');
+        });
+        migrateTrans();
+    }
+    if (ver < 2) {
+        logger.info('Migrating database to version 2 (config)');
+        const migrateTrans = db.transaction(() => {
+            db.exec(CONFIG_CREATE);
+            db.pragma('user_version = 2;');
+        });
+        migrateTrans();
     }
 
-    /** Add songs to the database for a given playlist. Updates playlist table and junction table as well. */
-    loadSongs(playlist_id: string, tracks: TrackList) {
+    return db;
+}
+
+/**
+ * DB wrapper
+ *
+ * Error handling: each method returns what happens on an error (usually returns false or null)
+ * Errors shouldn't really happen, only really from IO errors or something very wrong.
+ * Errors can cause crashes at startup, but later should be handled gracefully.
+ */
+export default class TrackStore {
+    readonly db: Database;
+
+    configCache: Config | null;
+
+    /** Create and load database. Will (and should) throw an error if it can't open. */
+    constructor(db_file?: string) {
+        this.db = openDB(db_file);
+        this.configCache = this.getConfig();
+    }
+
+    /** Add songs to the database for a given playlist. Updates playlist table and junction table as well.
+     *  On error, returns false. Will either fully complete or not at all.
+     */
+    loadSongs(playlist_id: string, tracks: Track[]): boolean {
         this.db.prepare(PLAYLIST_INSERT).run(playlist_id, { updated: new Date().getTime() });
         const songStmt = this.db.prepare(SONG_INSERT);
-        const contentStmt = this.db.prepare(CONTENTS_INSERT); //TODO: check removed
-        const txn = this.db.transaction((tracks: TrackList) => {
-            tracks.forEach((track) => {
+        const contentStmt = this.db.prepare(CONTENTS_INSERT); // TODO: check removed
+        const txn = this.db.transaction((tracksTxn: Track[]) => {
+            tracksTxn.forEach((track) => {
                 try {
                     songStmt.run(
                         track.id,
@@ -93,86 +225,139 @@ export class TrackStore {
                     contentStmt.run(playlist_id, track.id);
                 } catch (e) {
                     logger.warn(`Error adding track ${track.id} to database: ${e}`);
+                    throw e;
                 }
             });
         });
-        txn(tracks);
+        try {
+            txn(tracks); // if error adding a track, transaction will rollback
+        } catch (_) {
+            return false;
+        }
         logger.info(`Added ${tracks.length} songs to playlist ${playlist_id}`);
+        return true;
     }
 
-    /** increase title guessed, artist guessed, plays */
-    updatePlays(song_id: string, data: RoundData) {
+    /** Increase title guessed, artist guessed, plays.
+     *  On DB error, returns false
+     */
+    updatePlays(song_id: string, data: RoundData): boolean {
         const stmt = this.db.prepare(SONGS_UPDATE);
         try {
-            stmt.run(data.title, data.artist, data.plays, song_id);
+            stmt.run(data.title || 0, data.artist || 0, data.plays || 0, song_id);
             logger.info(
                 `Added ${data.title} title guesses, ${data.artist} artist guesses, ${data.plays} plays to song ${song_id}`
             );
         } catch (e) {
             logger.warn(`Error while updating plays for song ${song_id}: ${e}`);
+            return false;
         }
+        return true;
     }
 
-    /** Retrieve songs for a playlist. */
-    getSongs(playlist_id: string): TrackList {
+    /** Retrieve songs for a playlist.
+     *  On DB error, returns empty list
+     */
+    getSongs(playlist_id: string): Track[] {
         const stmt = this.db.prepare(SONGS_GET);
-        let songs: Track[] = [];
+        const songs: Track[] = [];
 
         try {
-            for (var row of stmt.iterate(playlist_id)) {
+            [...stmt.iterate(playlist_id)].forEach((row) => {
                 const artists = row.artists.split(',').map((s: string) => Buffer.from(s, 'base64').toString('utf8'));
                 songs.push({
                     id: row.song_id,
                     title: row.title,
-                    artists: artists,
+                    artists,
                     preview_url: row.preview_url,
                     image_url: row.img_url,
                 });
-            }
+            });
         } catch (e) {
             logger.error(`Error while getting songs from playlist ${playlist_id}: ${e}`);
         }
         logger.info(`Loaded ${songs.length} songs from playlist ${playlist_id}`);
         return songs;
     }
-}
 
-export interface Track {
-    id: string;
-    preview_url: string | null;
-    image_url: string;
-    title: string;
-    artists: Array<string>;
-}
-
-export type TrackList = readonly Track[];
-
-/** Create database and tables.
- * SONGS table: song_id, preview_url, img_url, title, artists, add_time, plays, title_guessed, artist_guessed
- * PLAYLISTS table: playlist_id, last_updated
- * CONTENTS: playlist_id, song_id
- *  -- foreign keys
- */
-function open_db() {
-    let db: Database;
-    try {
-        db = new sqlite3('data.db', { fileMustExist: true });
-    } catch (_) {
-        logger.info('Creating database.');
-        db = new sqlite3('data.db', {});
-        db.pragma('foreign_keys = ON;');
-        db.prepare(SONGS_CREATE).run();
-        db.prepare(PLAYLIST_CREATE).run();
-        db.prepare(CONTENTS_CREATE).run();
-        db.pragma('user_version = 1;');
+    /** Load full config from cache, or update it from the DB.
+     *  On error, returns null.
+     */
+    getConfig(force_update?: boolean): Config | null {
+        if (!force_update && this.configCache) {
+            return this.configCache;
+        }
+        const stmt = this.db.prepare(GET_ALL_CONFIG);
+        const configMap = new Map<string, string>();
+        try {
+            [...stmt.iterate()].forEach((row) => {
+                configMap.set(row.key, row.value);
+            });
+        } catch (e) {
+            logger.error(`Error while getting full config: ${e}`);
+            return null;
+        }
+        const config: Config = {
+            ws_port: configify(enforceNum(configMap.get('ws_port')), 8080),
+            auth_callback_addr: configify(configMap.get('auth_callback_addr'), 'http://localhost:8080/'),
+            auth_callback_port: configify(enforceNum(configMap.get('auth_callback_port')), 8080),
+            spotify: {
+                accessToken: configify(configMap.get('spotify.accessToken')),
+                clientId: configify(configMap.get('spotify.clientId')),
+                clientSecret: configify(configMap.get('spotify.clientSecret')),
+                refreshToken: configify(configMap.get('spotify.refreshToken')),
+            },
+        };
+        this.configCache = config;
+        return config;
     }
 
-    const ver = db.pragma('user_version', { simple: true });
-    if (ver < 1) {
-        logger.info('Migrating database to version 1 (plays tracking)');
-        V1_ALTERS.forEach((alter) => db.prepare(alter).run());
-        db.pragma('user_version = 1;');
+    /** Load single config value from cache, or update *the whole config cache*.
+     *  On DB error, returns null
+     */
+    getConfigValue(key: string, force_update?: boolean): string | null {
+        if (!force_update && this.configCache) {
+            const cacheVal = key.split('.').reduce((o, i) => (o ? o[i] : null), this.configCache as any)?.val;
+            if (cacheVal) {
+                return cacheVal.toString();
+            }
+        }
+        const stmt = this.db.prepare(GET_CONFIG);
+        let value: string | null = null;
+        try {
+            value = stmt.get(key)?.value;
+        } catch (e) {
+            logger.error(`Error while getting config value ${key}: ${e}`);
+        }
+        return value as string | null;
     }
 
-    return db;
+    /** Set config value, updates whole cache as well.
+     *  If fail to update cache, clear cache.
+     */
+    setConfig(key: string, val: string | null): boolean {
+        const stmt = this.db.prepare(SET_CONFIG);
+        try {
+            stmt.run(key, val);
+        } catch (e) {
+            logger.error(`Error while setting config value ${key}: ${e}`);
+            return false;
+        }
+        const config = this.getConfig(true);
+        if (config) {
+            this.configCache = config;
+        } else {
+            this.configCache = null;
+        }
+        return true;
+    }
+}
+
+/** Pick an unplayed song for the next track. */
+export function getRandomUnplayedTrack(list: TrackList) {
+    let track;
+    do {
+        track = list.songs[Math.floor(Math.random() * list.songs.length)];
+    } while (list.played.has(track));
+    return track;
 }

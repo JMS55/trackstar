@@ -5,22 +5,43 @@
   "scripts": {
     "build": "./node_modules/.bin/tsc",
     "start": "./node_modules/.bin/tsc && node ./bin/server.js",
-    "update_tracks": "./node_modules/.bin/tsc && node ./bin/spotify.js",
-    "dev": "ts-node ./src/index.ts"
+    "auth": "./node_modules/.bin/tsc && node ./bin/cmds.js auth",
+    "get-config": "./node_modules/.bin/tsc && TS_LOG_LEVEL=warn node ./bin/cmds.js get-config",
+    "get-all-config": "./node_modules/.bin/tsc && TS_LOG_LEVEL=warn node ./bin/cmds.js get-all-config",
+    "set-config": "./node_modules/.bin/tsc && node ./bin/cmds.js set-config",
+    "update_tracks": "./node_modules/.bin/tsc && node ./bin/cmds.js update-tracks",
+    "dev": "ts-node ./src/server.ts",
+    "test": "./node_modules/.bin/jest --coverage",
+    "lint": "./node_modules/.bin/eslint src/**/*.ts test/**/*.ts"
   },
   "dependencies": {
     "better-sqlite3": "^7.5.3",
+    "eslint": "^8.19.0",
+    "node-fetch": "^2.6.7",
     "runtypes": "^6.5.1",
     "spotify-web-api-node": "^5.0.2",
-    "typescript": "^4.7.3",
     "winston": "^3.7.2",
     "ws": "^8.8.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.5.0",
+    "@types/express": "^4.17.13",
+    "@types/jest": "^28.1.0",
+    "@types/node": "^17.0.38",
     "@types/node-fetch": "^2.6.1",
     "@types/spotify-web-api-node": "^5.0.7",
     "@types/ws": "^8.5.3",
-    "prettier": "2.6.2"
+    "@typescript-eslint/eslint-plugin": "^5.30.3",
+    "@typescript-eslint/parser": "^5.30.3",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^17.0.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jest": "^28.1.0",
+    "prettier": "2.6.2",
+    "ts-jest": "^28.0.4",
+    "ts-node": "^10.8.0",
+    "typescript": "^4.7.3"
   }
 }
