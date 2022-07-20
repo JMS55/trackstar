@@ -93,5 +93,5 @@ jobs:
           context: ./server
           push: true
           tags: |
-            - drp19/trackstar:latest
+            - 'drp19/trackstar:latest'
             - 'drp19/trackstar:${{ github.sha }}'
