@@ -15,7 +15,7 @@
     "lint": "./node_modules/.bin/eslint src/**/*.ts test/**/*.ts"
   },
   "dependencies": {
-    "better-sqlite3": "^7.5.3",
+    "better-sqlite3": "^7.6.2",
     "eslint": "^8.20.0",
     "node-fetch": "^2.6.7",
     "runtypes": "^6.5.1",
