@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^7.5.3",
-    "eslint": "^8.19.0",
+    "eslint": "^8.20.0",
     "node-fetch": "^2.6.7",
     "runtypes": "^6.5.1",
     "spotify-web-api-node": "^5.0.2",
@@ -32,7 +32,7 @@
     "@types/spotify-web-api-node": "^5.0.7",
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.30.3",
-    "@typescript-eslint/parser": "^5.30.3",
+    "@typescript-eslint/parser": "^5.30.7",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "^17.0.0",
     "eslint-config-prettier": "^8.5.0",
