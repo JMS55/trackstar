@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^7.6.2",
-    "eslint": "^8.20.0",
+    "eslint": "^8.22.0",
     "node-fetch": "^2.6.7",
     "runtypes": "^6.5.1",
     "spotify-web-api-node": "^5.0.2",
@@ -24,7 +24,7 @@
     "ws": "^8.8.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.5.0",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/express": "^4.17.13",
     "@types/jest": "^28.1.0",
     "@types/node": "^17.0.38",
