@@ -24,7 +24,7 @@
     "ws": "^8.8.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.5.0",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/express": "^4.17.13",
     "@types/jest": "^28.1.0",
     "@types/node": "^17.0.38",
