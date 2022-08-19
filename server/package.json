@@ -18,7 +18,7 @@
     "better-sqlite3": "^7.6.2",
     "eslint": "^8.20.0",
     "node-fetch": "^2.6.7",
-    "runtypes": "^6.5.1",
+    "runtypes": "^6.6.0",
     "spotify-web-api-node": "^5.0.2",
     "winston": "^3.7.2",
     "ws": "^8.8.0"
