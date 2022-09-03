@@ -14,7 +14,7 @@ class GamePage extends StatefulWidget {
   State<GamePage> createState() => _GamePageState();
 }
 
-class _GamePageState extends State<GamePage> {
+class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   final guessController = TextEditingController();
   bool canGuess = false;
   bool guessFieldBackgroundColor = true;
@@ -347,11 +347,15 @@ class _GamePageState extends State<GamePage> {
 
   @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
+
     sortedLeaderboard = SplayTreeMap.from(widget.trackStarService.leaderboard);
 
     guessController.addListener(() {
       setState(() => canGuess = guessController.text.isNotEmpty);
     });
+
+    widget.trackStarService.setMute(false);
 
     widget.trackStarService.changeSignal = (_) {
       setState(() {
@@ -403,10 +407,26 @@ class _GamePageState extends State<GamePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
     guessController.dispose();
 
     widget.trackStarService.disconnect();
 
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      if (state == AppLifecycleState.inactive ||
+          state == AppLifecycleState.paused) {
+        widget.trackStarService.setMute(true);
+      }
+
+      if (state == AppLifecycleState.resumed) {
+        widget.trackStarService.setMute(false);
+      }
+    });
   }
 }

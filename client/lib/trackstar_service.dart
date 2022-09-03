@@ -42,6 +42,17 @@ class TrackStarService {
   }) {
     this.roomId = roomId ?? Random().nextInt(9999);
 
+    audioPlayer.onPlayerComplete.listen((_) {
+      gameState = GameState.betweenTracks;
+
+      guessedTitle = false;
+      guessedArtist = false;
+
+      signalChange();
+    });
+
+    audioPlayer.setVolume(0);
+
     ws = WebSocketChannel.connect(Uri.parse(
       'wss://trackstar.ml/ws/${this.roomId}/$userName',
     ));
@@ -61,15 +72,6 @@ class TrackStarService {
         handleLeaderBoard(LeaderBoardMessage.fromJson(msg));
       }
     });
-
-    audioPlayer.onPlayerComplete.listen((_) {
-      gameState = GameState.betweenTracks;
-
-      guessedTitle = false;
-      guessedArtist = false;
-
-      signalChange();
-    });
   }
 
   void startGame() {
@@ -88,6 +90,10 @@ class TrackStarService {
   void toggleMute() {
     muted = !muted;
     audioPlayer.setVolume(muted ? 0 : 0.1);
+  }
+
+  void setMute(bool mute) {
+    audioPlayer.setVolume(mute ? 0 : 0.1);
   }
 
   void handleGameConfig(GameConfigMessage msg) {
