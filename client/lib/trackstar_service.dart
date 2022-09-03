@@ -92,8 +92,12 @@ class TrackStarService {
     audioPlayer.setVolume(muted ? 0 : 0.1);
   }
 
-  void setMute(bool mute) {
-    audioPlayer.setVolume(mute ? 0 : 0.1);
+  void setMuteOverride(bool mute) {
+    if (mute) {
+      audioPlayer.setVolume(0.0);
+    } else {
+      audioPlayer.setVolume(muted ? 0 : 0.1);
+    }
   }
 
   void handleGameConfig(GameConfigMessage msg) {

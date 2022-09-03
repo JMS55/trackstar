@@ -355,7 +355,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       setState(() => canGuess = guessController.text.isNotEmpty);
     });
 
-    widget.trackStarService.setMute(false);
+    widget.trackStarService.setMuteOverride(false);
 
     widget.trackStarService.changeSignal = (_) {
       setState(() {
@@ -421,11 +421,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     setState(() {
       if (state == AppLifecycleState.inactive ||
           state == AppLifecycleState.paused) {
-        widget.trackStarService.setMute(true);
+        widget.trackStarService.setMuteOverride(true);
       }
 
       if (state == AppLifecycleState.resumed) {
-        widget.trackStarService.setMute(false);
+        widget.trackStarService.setMuteOverride(false);
       }
     });
   }
