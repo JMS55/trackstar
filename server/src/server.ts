@@ -26,7 +26,7 @@ function handleNewConnection(
     request_url: string
 ): [Room, Player] {
     logger.debug(`Client connected with URL... ${request_url}`);
-    const sliced = request_url.split('/').slice(-2)[0];
+    const sliced = request_url.split('/').slice(-2);
     const roomId = sliced[0];
     const playerName = decodeURIComponent(sliced[1]);
     const newPlayer: Player = {
@@ -72,8 +72,7 @@ function handleMessage(room: Room, player: Player, message_json: string) {
     // Ensure message matches one of our defined formats
     if (!ClientWSMessage.guard(message)) {
         logger.error(
-            `Message received from player ${player.name} for room ${
-                room.id
+            `Message received from player ${player.name} for room ${room.id
             } is not in an accepted format...\n${prettyJson(message_json)}`
         );
         return;
