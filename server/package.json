@@ -21,7 +21,7 @@
     "runtypes": "^6.6.0",
     "spotify-web-api-node": "^5.0.2",
     "winston": "^3.7.2",
-    "ws": "^8.8.0"
+    "ws": "^8.11.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
