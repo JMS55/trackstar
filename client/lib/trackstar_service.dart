@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -41,15 +41,6 @@ class TrackStarService {
     required this.changeSignal,
   }) {
     this.roomId = roomId ?? Random().nextInt(9999);
-
-    audioPlayer.onPlayerComplete.listen((_) {
-      gameState = GameState.betweenTracks;
-
-      guessedTitle = false;
-      guessedArtist = false;
-
-      signalChange();
-    });
 
     audioPlayer.setVolume(0);
 
@@ -107,9 +98,11 @@ class TrackStarService {
     signalChange();
   }
 
-  void handleTrackInfo(TrackInfoMessage msg) {
+  Future<void> handleTrackInfo(TrackInfoMessage msg) async {
     trackNumber = msg.trackNumber;
     trackStartTime = msg.whenToStart;
+
+    await audioPlayer.setUrl(msg.url);
 
     Duration delayUntilTrackStart =
         DateTime.fromMillisecondsSinceEpoch(trackStartTime, isUtc: true)
@@ -130,11 +123,20 @@ class TrackStarService {
         albumCoverUrl = msg.albumCoverUrl;
 
         gameState = GameState.guessing;
-        audioPlayer.play(UrlSource(msg.url), volume: 0.1);
+        audioPlayer.play();
 
         signalChange();
       },
     );
+
+    Future.delayed(delayUntilTrackStart + const Duration(seconds: 30), () {
+      gameState = GameState.betweenTracks;
+
+      guessedTitle = false;
+      guessedArtist = false;
+
+      signalChange();
+    });
   }
 
   void handleGuessResult(GuessResultMessage msg) {
