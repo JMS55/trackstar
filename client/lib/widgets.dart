@@ -76,8 +76,10 @@ class RoomLeaveConfirmationDialog extends StatelessWidget {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    onPrimary: Theme.of(context).colorScheme.onErrorContainer,
-                    primary: Theme.of(context).colorScheme.errorContainer,
+                    foregroundColor:
+                        Theme.of(context).colorScheme.onErrorContainer,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.errorContainer,
                   ).copyWith(elevation: ButtonStyleButton.allOrNull(0.0)),
                   child: const Text('Leave room'),
                 ),

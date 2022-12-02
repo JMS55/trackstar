@@ -58,7 +58,7 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
       MaterialPageRoute(
         builder: (context) => LobbyPage(
           roomId: int.parse(roomIdController.text),
-          username: widget.usernameController.text,
+          username: widget.usernameController.text.trim(),
         ),
       ),
     );

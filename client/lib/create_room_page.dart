@@ -46,7 +46,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       context,
       MaterialPageRoute(
         builder: (context) => LobbyPage(
-          username: widget.usernameController.text,
+          username: widget.usernameController.text.trim(),
         ),
       ),
     );
