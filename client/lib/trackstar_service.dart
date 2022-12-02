@@ -66,6 +66,8 @@ class TrackStarService {
   }
 
   void startGame() {
+    muted = userName != host;
+
     ws.sink.add(jsonEncode(
         StartGameCommand(tracksPerRound: 15, timeBetweenTracks: 15).toJson()));
   }
@@ -107,6 +109,7 @@ class TrackStarService {
     Duration delayUntilTrackStart =
         DateTime.fromMillisecondsSinceEpoch(trackStartTime, isUtc: true)
             .difference(DateTime.now().toUtc());
+
     Future.delayed(
       delayUntilTrackStart,
       () {
