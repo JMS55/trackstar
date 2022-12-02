@@ -86,8 +86,8 @@ function handleMessage(room: Room, player: Player, message_json: string) {
     switch (message.topic) {
         case Topic.START_GAME_COMMAND:
             room.setGameConfig(message.tracks_per_round, message.time_between_tracks);
-        // no break is intentional
-        // eslint-disable-next-line no-fallthrough
+            room.startRound();
+            break;
         case Topic.START_ROUND_COMMAND:
             room.startRound();
             break;

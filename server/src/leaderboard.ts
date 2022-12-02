@@ -5,6 +5,12 @@ export default class Leaderboard {
 
     completions: Map<string, number> = new Map();
 
+    /** Get the leaderboard with only active players included */
+    getActive(): Map<string, Standing> {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        return new Map([...this.board].filter(([_player, standing]) => standing.active));
+    }
+
     getPlayer(name: string): Standing | undefined {
         return this.board.get(name);
     }
@@ -19,21 +25,19 @@ export default class Leaderboard {
         });
     }
 
-    /** Reset the standings of all players in the leaderboard */
-    reset() {
-        this.board.forEach((_standing, player) => {
-            this.addPlayer(player);
-        });
+    /** Update points from current track for given player based on given progress */
+    updateCorrectGuessPoints(player: string, progress: Progress, time: number) {
+        const boardPlayer = this.getPlayer(player)!;
+        boardPlayer.points_from_current_track += 1;
+        boardPlayer.progress = progress;
+        if (boardPlayer.progress === Progress.BOTH) {
+            this.determineCompletedGuessPoints(player, time);
+        }
     }
 
-    /** Get the leaderboard with only active players included */
-    getActive(): Map<string, Standing> {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        return new Map([...this.board].filter(([_player, standing]) => standing.active));
-    }
-
-    endRound() {
-        this.board.forEach((standing) => {
+    /** Add points from current track to scores and reset completions */
+    awardCurrentPoints() {
+        this.board.forEach(standing => {
             // with maps there's no better way to do this really and there's no real problem with it
             /* eslint-disable no-param-reassign */
             standing.score += standing.points_from_current_track;
@@ -45,16 +49,23 @@ export default class Leaderboard {
         this.completions = new Map();
     }
 
-    updatePlayerRound(player: string, progress: Progress, time: number) {
-        const boardPlayer = this.getPlayer(player)!;
-        boardPlayer.points_from_current_track += 1;
-        boardPlayer.progress = progress;
-        if (boardPlayer.progress === Progress.BOTH) {
-            this.complete(player, time);
-        }
+    /** Reset the standings of all players in the leaderboard and the completions */
+    reset() {
+        this.board.forEach(standing => {
+            // with maps there's no better way to do this really and there's no real problem with it
+            /* eslint-disable no-param-reassign */
+            standing.score = 0;
+            standing.points_from_current_track = 0;
+            standing.progress = Progress.NONE;
+            standing.place = Place.NONE;
+            /* eslint-enable no-param-reassign */
+        });
+        this.completions = new Map();
     }
 
-    private complete(player: string, time: number) {
+    /** Add completion of given player to sorted list of completions
+     *  and update points from current track for all completed players */
+    private determineCompletedGuessPoints(player: string, time: number) {
         this.completions.set(player, time);
         const keys = [...this.completions.entries()];
         keys.sort((a, b) => a[1] - b[1]);

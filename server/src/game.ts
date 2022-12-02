@@ -99,14 +99,14 @@ export default class Game {
             // Player has both title and artist correct now
             newProgress = Progress.BOTH;
         }
-        this.leaderboard.updatePlayerRound(player, newProgress, time);
+        this.leaderboard.updateCorrectGuessPoints(player, newProgress, time);
 
         return result;
     }
 
     /** Add points from current track to scores and reset completions */
     endTrack() {
-        this.leaderboard.endRound();
+        this.leaderboard.awardCurrentPoints();
         this.updateRoundData(this.current_track!.id, { plays: this.leaderboard.getActive().size });
     }
 }
