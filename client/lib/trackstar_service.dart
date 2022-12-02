@@ -71,6 +71,8 @@ class TrackStarService {
   }
 
   void startRound() {
+    gameState = GameState.guessing;
+
     ws.sink.add(jsonEncode(StartRoundCommand().toJson()));
   }
 

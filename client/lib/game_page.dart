@@ -194,7 +194,30 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   Widget buildRoundEndPage(BuildContext context) {
-    return const Text("Round over TODO");
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Column(
+            children: [
+              Text(
+                'Round over - ${sortedLeaderboard.keys.elementAt(0)} wins!',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Text(
+                widget.trackStarService.userName != widget.trackStarService.host
+                    ? 'Wait for the host to start a new round'
+                    : 'You\'re the host - start a new round',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Flexible(child: buildLeaderboardFinal(context)),
+        ],
+      ),
+    );
   }
 
   Widget buildLeaderboard(BuildContext context) {
@@ -253,6 +276,72 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                           color: Theme.of(context).colorScheme.primary,
                         )
                       : const Icon(Icons.brush_outlined),
+                ],
+              ),
+              visualDensity: VisualDensity.compact,
+            );
+          },
+          separatorBuilder: (BuildContext context, int index) =>
+              const Divider(),
+          shrinkWrap: true,
+        ),
+      ),
+    );
+  }
+
+  Widget buildLeaderboardFinal(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outline,
+        ),
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: ListView.separated(
+          itemCount: sortedLeaderboard.length,
+          itemBuilder: (BuildContext context, int index) {
+            String username = sortedLeaderboard.keys.elementAt(index);
+            Standing standing = sortedLeaderboard.values.elementAt(index);
+            Color avatarBorder;
+            switch (index) {
+              case 0:
+                avatarBorder = Colors.amber.shade300;
+                break;
+              case 1:
+                avatarBorder = Colors.grey.shade300;
+                break;
+              case 2:
+                avatarBorder = Colors.brown.shade300;
+                break;
+              default:
+                avatarBorder = Colors.transparent;
+                break;
+            }
+
+            return ListTile(
+              leading: AvatarCircle(username: username, border: avatarBorder),
+              title: Text(username),
+              subtitle: Text(
+                'Score: ${standing.score + standing.pointsFromCurrentTrack}',
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '#${index + 1}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(color: index < 3 ? avatarBorder : null),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.emoji_events_rounded,
+                    color: avatarBorder,
+                  ),
                 ],
               ),
               visualDensity: VisualDensity.compact,
