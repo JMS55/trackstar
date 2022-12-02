@@ -66,8 +66,6 @@ class TrackStarService {
   }
 
   void startGame() {
-    muted = userName != host;
-
     ws.sink.add(jsonEncode(
         StartGameCommand(tracksPerRound: 15, timeBetweenTracks: 15).toJson()));
   }
@@ -96,6 +94,8 @@ class TrackStarService {
   void handleGameConfig(GameConfigMessage msg) {
     timeBetweenTracks = msg.timeBetweenTracks;
     tracksPerRound = msg.tracksPerRound;
+
+    muted = userName != host;
 
     signalChange();
   }
