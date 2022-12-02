@@ -20,7 +20,7 @@ export default class Leaderboard {
     }
 
     /** Reset the standings of all players in the leaderboard */
-    resetLeaderboard() {
+    reset() {
         this.board.forEach((_standing, player) => {
             this.addPlayer(player);
         });

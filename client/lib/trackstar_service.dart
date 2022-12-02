@@ -130,10 +130,17 @@ class TrackStarService {
     );
 
     Future.delayed(delayUntilTrackStart + const Duration(seconds: 30), () {
-      gameState = GameState.betweenTracks;
-
       guessedTitle = false;
       guessedArtist = false;
+
+      gameState = GameState.betweenTracks;
+
+      if (trackNumber == tracksPerRound) {
+        Future.delayed(Duration(seconds: timeBetweenTracks), () {
+          gameState = GameState.roundEnd;
+          signalChange();
+        });
+      }
 
       signalChange();
     });
@@ -176,7 +183,7 @@ class TrackStarService {
   }
 }
 
-enum GameState { initial, guessing, betweenTracks }
+enum GameState { initial, guessing, betweenTracks, roundEnd }
 
 // -----------------------------------------------------------------------------
 

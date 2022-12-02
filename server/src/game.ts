@@ -36,8 +36,10 @@ export default class Game {
         return this.leaderboard.getActive();
     }
 
-    resetLeaderboard() {
-        this.leaderboard.resetLeaderboard();
+    newRound() {
+        this.current_track_number = 0;
+
+        this.leaderboard.reset();
     }
 
     setGameConfig(tracks_per_round: number, secs_between_tracks: number) {

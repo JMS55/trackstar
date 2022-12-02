@@ -42,16 +42,35 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           ],
         ),
         body: SafeArea(child: buildPage(context)),
-        floatingActionButton: canGuess
+        floatingActionButton: buildFab(),
+      ),
+    );
+  }
+
+  FloatingActionButton? buildFab() {
+    switch (widget.trackStarService.gameState) {
+      case GameState.initial:
+        return null;
+      case GameState.guessing:
+        return canGuess
             ? FloatingActionButton.extended(
                 onPressed: () =>
                     widget.trackStarService.makeGuess(guessController.text),
                 icon: const Icon(Icons.send_outlined),
                 label: const Text('Make Guess'),
               )
-            : null,
-      ),
-    );
+            : null;
+      case GameState.betweenTracks:
+        return null;
+      case GameState.roundEnd:
+        return widget.trackStarService.host == widget.trackStarService.userName
+            ? FloatingActionButton.extended(
+                onPressed: () => widget.trackStarService.startRound(),
+                icon: const Icon(Icons.navigate_next_rounded),
+                label: const Text('New Round'),
+              )
+            : null;
+    }
   }
 
   Widget buildPage(BuildContext context) {
@@ -62,6 +81,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         return buildGuessingPage(context);
       case GameState.betweenTracks:
         return buildBetweenTracksPage(context);
+      case GameState.roundEnd:
+        return buildRoundEndPage(context);
     }
   }
 
@@ -170,6 +191,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         ],
       ),
     );
+  }
+
+  Widget buildRoundEndPage(BuildContext context) {
+    return const Text("Round over TODO");
   }
 
   Widget buildLeaderboard(BuildContext context) {

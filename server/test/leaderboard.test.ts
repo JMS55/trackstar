@@ -47,7 +47,7 @@ describe('testing completion points system', () => {
             });
         });
         test('resetting leaderboard clears fields but keeps players', () => {
-            board.resetLeaderboard();
+            board.reset();
             expect(board.getActive().size).toBe(1);
             expect(board.getPlayer(name)).toEqual({
                 score: 0,

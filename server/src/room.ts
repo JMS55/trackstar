@@ -104,7 +104,7 @@ export default class Room {
         }
 
         this.setGameState(State.BETWEEN_TRACKS);
-        this.game.resetLeaderboard();
+        this.game.newRound();
         this.sendLeaderboard();
         this.selectTrack();
     }
