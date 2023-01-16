@@ -16,7 +16,7 @@ dependencies:
   flutter_easyloading: ^3.0.5
   dynamic_color: ^1.4.0
   just_audio: ^0.9.30
-  web_socket_channel: ^2.2.0
+  web_socket_channel: ^2.3.0
   json_annotation: ^4.6.0
 
 flutter_icons:
