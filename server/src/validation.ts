@@ -71,9 +71,11 @@ export function isCorrectArtist(track: Track, guess: string): boolean {
         track.artists.find(
             (artist) =>
                 closeEnough(simplifyString(artist), guessSimple) ||
-                closeEnough(simplifyString(artist), `the${guessSimple}`) ||
                 closeEnough(simplifyString(artist, true), guessSimple) ||
-                closeEnough(simplifyString(artist, true), `the${guessSimple}`)
+                closeEnough(simplifyString(artist), `the${guessSimple}`) ||
+                closeEnough(simplifyString(artist, true), `the${guessSimple}`) ||
+                closeEnough(simplifyString(`the${artist}`), guessSimple) ||
+                closeEnough(simplifyString(`the${artist}`, true), guessSimple)
         ) !== undefined
     );
 }
