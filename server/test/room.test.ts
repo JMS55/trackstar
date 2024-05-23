@@ -15,7 +15,7 @@ const enterPlayer = jest.fn();
 const getActiveLeaderboard = jest.fn();
 const setGameConfig = jest.fn();
 const processGuess = jest.fn();
-const resetLeaderboard = jest.fn();
+const newRound = jest.fn();
 const nextTrack = jest.fn();
 
 jest.mock('../src/game', () =>
@@ -26,7 +26,7 @@ jest.mock('../src/game', () =>
         state: State.LOBBY,
         setGameConfig,
         processGuess,
-        resetLeaderboard,
+        newRound,
         nextTrack,
         endTrack: jest.fn(),
         deactivatePlayer: jest.fn(),
@@ -124,7 +124,7 @@ describe('lobby tests', () => {
         });
         test('Sets game state to between tracks and resets leaderboard', () => {
             expect(room.game.state).toBe(State.BETWEEN_TRACKS);
-            expect(resetLeaderboard).toBeCalled();
+            expect(newRound).toBeCalled();
         });
         test('Sends leaderboard and next track to start in 1 second', () => {
             expect(clientMock1.send).toHaveBeenCalledWith(expect.stringContaining('leaderboard'));

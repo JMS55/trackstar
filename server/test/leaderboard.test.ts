@@ -17,7 +17,7 @@ describe('testing completion points system', () => {
             });
         });
         test('getting the artist sets progress and 1 point', () => {
-            board.updatePlayerRound(name, Progress.ARTIST, 100);
+            board.updateCorrectGuessPoints(name, Progress.ARTIST, 100);
             expect(board.getPlayer(name)).toEqual({
                 score: 0,
                 points_from_current_track: 1,
@@ -27,7 +27,7 @@ describe('testing completion points system', () => {
             });
         });
         test('getting the artist after the title sets BOTH and 6 points', () => {
-            board.updatePlayerRound(name, Progress.BOTH, 100);
+            board.updateCorrectGuessPoints(name, Progress.BOTH, 100);
             expect(board.getPlayer(name)).toEqual({
                 score: 0,
                 points_from_current_track: 6,
@@ -37,7 +37,7 @@ describe('testing completion points system', () => {
             });
         });
         test('ending the round resets the status and sets score', () => {
-            board.endRound();
+            board.awardCurrentPoints();
             expect(board.getPlayer(name)).toEqual({
                 score: 6,
                 points_from_current_track: 0,
@@ -72,7 +72,7 @@ describe('testing completion points system', () => {
             expect(board.getActive().size).toBe(2);
         });
         test("setting complete for one player sets it's fields and none on the other", () => {
-            board.updatePlayerRound(name1, Progress.BOTH, 100);
+            board.updateCorrectGuessPoints(name1, Progress.BOTH, 100);
             expect(board.getActive().get(name1)).toEqual({
                 score: 0,
                 points_from_current_track: 6,
@@ -90,8 +90,8 @@ describe('testing completion points system', () => {
         });
         describe('setting complete for the second player before the first player', () => {
             beforeAll(() => {
-                board.updatePlayerRound(name1, Progress.BOTH, 100);
-                board.updatePlayerRound(name2, Progress.BOTH, 90);
+                board.updateCorrectGuessPoints(name1, Progress.BOTH, 100);
+                board.updateCorrectGuessPoints(name2, Progress.BOTH, 90);
             });
             it("sets the 'first' player to second place and 5 pts", () => {
                 expect(board.getActive().get(name1)).toEqual({
@@ -115,10 +115,10 @@ describe('testing completion points system', () => {
         test('setting complete for 3rd and 4th player sets place (3rd, none) and points (4, 2)', () => {
             board.addPlayer(name3);
             board.addPlayer(name4);
-            board.updatePlayerRound(name1, Progress.BOTH, 100);
-            board.updatePlayerRound(name2, Progress.BOTH, 100);
-            board.updatePlayerRound(name3, Progress.BOTH, 1000);
-            board.updatePlayerRound(name4, Progress.BOTH, 10000);
+            board.updateCorrectGuessPoints(name1, Progress.BOTH, 100);
+            board.updateCorrectGuessPoints(name2, Progress.BOTH, 100);
+            board.updateCorrectGuessPoints(name3, Progress.BOTH, 1000);
+            board.updateCorrectGuessPoints(name4, Progress.BOTH, 10000);
             expect(board.getActive().get(name3)).toEqual({
                 score: 0,
                 points_from_current_track: 4,

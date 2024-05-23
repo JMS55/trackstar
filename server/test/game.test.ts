@@ -5,12 +5,12 @@ import { GuessResult, Progress, State } from '../src/types';
 const addPlayer = jest.fn();
 const getPlayer = jest.fn();
 const updateRoundData = jest.fn();
-const updatePlayerRound = jest.fn();
+const updateCorrectGuessPoints = jest.fn();
 jest.mock('../src/leaderboard', () =>
     jest.fn().mockImplementation(() => ({
         addPlayer,
         getPlayer,
-        updatePlayerRound,
+        updateCorrectGuessPoints,
     }))
 );
 jest.mock('../src/data', () => ({
@@ -70,36 +70,36 @@ describe('guess processing', () => {
         getPlayer.mockImplementation(() => ({ progress: Progress.NONE }));
         expect(game.processGuess('player1', 'na', 100)).toBe(GuessResult.INCORRECT);
         expect(updateRoundData).not.toHaveBeenCalled();
-        expect(updatePlayerRound).not.toHaveBeenCalled();
+        expect(updateCorrectGuessPoints).not.toHaveBeenCalled();
     });
     test("incorrect guess with BOTH returns INCORRECT and doesn't update anything", () => {
         getPlayer.mockImplementation(() => ({ progress: Progress.BOTH }));
         expect(game.processGuess('player1', 'na', 100)).toBe(GuessResult.INCORRECT);
         expect(updateRoundData).not.toHaveBeenCalled();
-        expect(updatePlayerRound).not.toHaveBeenCalled();
+        expect(updateCorrectGuessPoints).not.toHaveBeenCalled();
     });
     test('title guess with NONE returns TITLE and updates title metadata and updates leaderboard to TITLE', () => {
         getPlayer.mockImplementation(() => ({ progress: Progress.NONE }));
         expect(game.processGuess('player1', 'title1', 100)).toBe(GuessResult.TITLE);
         expect(updateRoundData).toHaveBeenCalledWith(expect.anything(), { title: 1 });
-        expect(updatePlayerRound).toHaveBeenCalledWith(expect.anything(), Progress.TITLE, expect.anything());
+        expect(updateCorrectGuessPoints).toHaveBeenCalledWith(expect.anything(), Progress.TITLE, expect.anything());
     });
     test('artist guess with TITLE returns ARTIST and updates artist metadata and updates leaderboard to BOTH', () => {
         getPlayer.mockImplementation(() => ({ progress: Progress.TITLE }));
         expect(game.processGuess('player1', 'artist1', 100)).toBe(GuessResult.ARTIST);
         expect(updateRoundData).toHaveBeenCalledWith(expect.anything(), { artist: 1 });
-        expect(updatePlayerRound).toHaveBeenCalledWith(expect.anything(), Progress.BOTH, expect.anything());
+        expect(updateCorrectGuessPoints).toHaveBeenCalledWith(expect.anything(), Progress.BOTH, expect.anything());
     });
     test('title guess with ARTIST returns TITLE and updates title metadata and updates leaderboard to BOTH', () => {
         getPlayer.mockImplementation(() => ({ progress: Progress.ARTIST }));
         expect(game.processGuess('player1', 'title1', 101)).toBe(GuessResult.TITLE);
         expect(updateRoundData).toHaveBeenCalledWith(expect.anything(), { title: 1 });
-        expect(updatePlayerRound).toHaveBeenCalledWith(expect.anything(), Progress.BOTH, 101);
+        expect(updateCorrectGuessPoints).toHaveBeenCalledWith(expect.anything(), Progress.BOTH, 101);
     });
     test("artist guess with ARTIST returns NONE and doesn't update anything", () => {
         getPlayer.mockImplementation(() => ({ progress: Progress.ARTIST }));
         expect(game.processGuess('player1', 'artist1', 101)).toBe(GuessResult.INCORRECT);
         expect(updateRoundData).not.toHaveBeenCalled();
-        expect(updatePlayerRound).not.toHaveBeenCalled();
+        expect(updateCorrectGuessPoints).not.toHaveBeenCalled();
     });
 });
