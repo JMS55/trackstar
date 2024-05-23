@@ -72,8 +72,8 @@ function handleMessage(room: Room, player: Player, message_json: string) {
     // Ensure message matches one of our defined formats
     if (!ClientWSMessage.guard(message)) {
         logger.error(
-            `Message received from player ${player.name} for room ${room.id
-            } is not in an accepted format...\n${prettyJson(message_json)}`
+            `Message received from player ${player.name} for room ${room.id}
+            is not in an accepted format...\n${prettyJson(message_json)}`
         );
         return;
     }

@@ -37,7 +37,7 @@ export default class Leaderboard {
 
     /** Add points from current track to scores and reset completions */
     awardCurrentPoints() {
-        this.board.forEach(standing => {
+        this.board.forEach((standing) => {
             // with maps there's no better way to do this really and there's no real problem with it
             /* eslint-disable no-param-reassign */
             standing.score += standing.points_from_current_track;
@@ -51,7 +51,7 @@ export default class Leaderboard {
 
     /** Reset the standings of all players in the leaderboard and the completions */
     reset() {
-        this.board.forEach(standing => {
+        this.board.forEach((standing) => {
             // with maps there's no better way to do this really and there's no real problem with it
             /* eslint-disable no-param-reassign */
             standing.score = 0;
