@@ -4,7 +4,7 @@ import type { Track } from './data';
  * Regexes that match title elements we'd like to strip
  * @see {@link stripTitle}
  */
-const TITLE_EXTRAS = [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/];
+const TITLE_EXTRAS = [/^\(.*\)\s+(.*)$/, /^(.*)\s+\(.*\)$/, /^(.*)\s+\[.*\]$/, /^(.*)\s+-.*$/, /^(.*)\s+\/.*$/];
 
 /**
  * Remove capitalization, accents, and non-alphanumeric characters
@@ -21,12 +21,9 @@ function simplifyString(str: string, spell_amp: boolean = false) {
 
 /** Remove things like "(feat. Rihanna)" and "- Radio Edit" from title */
 function stripTitle(title: string) {
-    return TITLE_EXTRAS.reduce((a, r) => {
+    return [].concat(...new Array(8).fill(TITLE_EXTRAS)).reduce((a, r) => {
         const found = a.match(r);
-        if (found) {
-            return found[1];
-        }
-        return a;
+        return found ? found[1] : a;
     }, title);
 }
 
